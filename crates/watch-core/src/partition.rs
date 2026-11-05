@@ -41,6 +41,22 @@ pub fn find() -> Option<PathBuf> {
     None
 }
 
+/// Find the mounted USER partition (the large FAT disk with a `MAP` folder,
+/// where offline maps, music and photos live). It is distinct from the hidden
+/// system partition (which has `gui/apps`). Mounted in normal Mass Storage mode.
+pub fn find_user() -> Option<PathBuf> {
+    for letter in b'D'..=b'Z' {
+        let root = PathBuf::from(format!("{}:\\", letter as char));
+        if root.join("gui").join("apps").is_dir() {
+            continue; // that is the hidden partition
+        }
+        if root.join("MAP").is_dir() {
+            return Some(root);
+        }
+    }
+    None
+}
+
 /// Reject a relative path that could escape the partition root.
 fn safe_join(root: &Path, rel: &str) -> Result<PathBuf, Error> {
     let mut p = root.to_path_buf();

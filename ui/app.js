@@ -64,6 +64,15 @@ const I18N = {
     "bg.applying": "כותב את הרקע...",
     "bg.done": "הרקע נכתב. בשעון, בחר את חזית התמונה המותאמת, והפעל מחדש אם צריך.",
     "bg.need": "כדי להחיל, חבר את השעון במצב מתאים (או הפעל מצב הדגמה).",
+    "tab.maps": "מפות",
+    "maps.title": "מפות אופליין",
+    "maps.intro": "המפות המותקנות בשעון (בכונן המשתמש, תחת MAP/map). אפשר להסיר מפות, ולהוסיף חדשות דרך סייר הקבצים.",
+    "maps.open": "פתח את תיקיית המפות",
+    "maps.refresh": "רענן",
+    "maps.osm_note": "ליצירת מפות OSM מפורטות משלך: הכלי dtg1-map-tools מקמפל קובץ map.osm (מיצוא של OpenStreetMap) לפורמט השעון, כולל מסלולי GPX. יש גם מפות מוכנות להורדה. בקרוב נשלב את הקימפול כאן.",
+    "maps.empty": "אין מפות מותקנות. פתח את תיקיית המפות כדי להוסיף.",
+    "maps.need": "חבר את השעון (או הפעל מצב הדגמה) כדי לראות מפות.",
+    "maps.confirm_del": "להסיר את המפה",
     "soon": "בבנייה. יתווסף בקרוב.",
     "footer.safe": "קריאה בלבד ומעברי-מצב בלבד. אין כתיבה או מחיקה לקושחה.",
   },
@@ -129,6 +138,15 @@ const I18N = {
     "bg.applying": "Writing the background...",
     "bg.done": "Background written. On the watch, select the custom photo face, and restart if needed.",
     "bg.need": "To apply, connect the watch (or turn on demo mode).",
+    "tab.maps": "Maps",
+    "maps.title": "Offline maps",
+    "maps.intro": "The maps installed on the watch (on the user drive, under MAP/map). Remove maps, and add new ones through File Explorer.",
+    "maps.open": "Open the maps folder",
+    "maps.refresh": "Refresh",
+    "maps.osm_note": "To make your own detailed OSM maps: the dtg1-map-tools compiler turns a map.osm file (exported from OpenStreetMap) into the watch format, including GPX routes. Pre-compiled maps are also available. Compiling will be built in here soon.",
+    "maps.empty": "No maps installed. Open the maps folder to add some.",
+    "maps.need": "Connect the watch (or turn on demo mode) to see maps.",
+    "maps.confirm_del": "Remove the map",
     "soon": "Under construction. Coming soon.",
     "footer.safe": "Read-only and mode-change only. No firmware writes or erases.",
   },
@@ -207,6 +225,60 @@ function setStatus(mode) {
   if (menuTab) menuTab.disabled = !(mode === "charging" || mode === "demo");
   const bgTab = document.querySelector('.nav-item[data-tab="background"]');
   if (bgTab) bgTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
+  const mapsTab = document.querySelector('.nav-item[data-tab="maps"]');
+  if (mapsTab) mapsTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
+}
+
+/* ---------- Maps ---------- */
+async function loadMaps() {
+  const msg = document.getElementById("mapsMsg");
+  const list = document.getElementById("mapsList");
+  try {
+    const maps = await invoke("list_maps");
+    list.innerHTML = "";
+    msg.textContent = "";
+    if (maps.length === 0) {
+      const e = document.createElement("div");
+      e.className = "map-empty";
+      e.textContent = t("maps.empty");
+      list.appendChild(e);
+      return;
+    }
+    for (const m of maps) {
+      const row = document.createElement("div");
+      row.className = "map-row";
+      row.innerHTML =
+        '<svg class="map-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15"/></svg>' +
+        '<div class="map-info"><div class="map-name"></div><div class="map-sub"></div></div>' +
+        '<button class="map-del"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>';
+      row.querySelector(".map-name").textContent = m.display;
+      row.querySelector(".map-sub").textContent = m.name + "  ·  " + formatSize(m.size);
+      row.querySelector(".map-del").addEventListener("click", () => deleteMap(m));
+      list.appendChild(row);
+    }
+  } catch (e) {
+    list.innerHTML = "";
+    msg.textContent = String(e).includes("not_mounted") ? t("maps.need") : String(e);
+  }
+}
+
+async function deleteMap(m) {
+  if (!window.confirm(t("maps.confirm_del") + ' "' + m.display + '"?')) return;
+  try {
+    await invoke("delete_map", { name: m.name });
+    await loadMaps();
+  } catch (e) {
+    document.getElementById("mapsMsg").textContent = String(e);
+  }
+}
+
+async function revealMaps() {
+  try {
+    await invoke("reveal_maps");
+  } catch (e) {
+    document.getElementById("mapsMsg").textContent =
+      String(e).includes("not_mounted") ? t("maps.need") : String(e);
+  }
 }
 
 /* ---------- Background editor (interactive canvas) ---------- */
@@ -475,6 +547,7 @@ async function ping() {
 function switchTab(name) {
   document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
+  if (name === "maps") loadMaps();
 }
 
 /* ---------- Menu editor ---------- */
@@ -614,6 +687,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("bgApply").addEventListener("click", bgApply);
   document.getElementById("bgReset").addEventListener("click", bgReset);
   bgSetupPan();
+  document.getElementById("mapsOpen").addEventListener("click", revealMaps);
+  document.getElementById("mapsRefresh").addEventListener("click", loadMaps);
   document.querySelectorAll(".nav-item").forEach((b) => {
     b.addEventListener("click", () => { if (!b.disabled) switchTab(b.dataset.tab); });
   });

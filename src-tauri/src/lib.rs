@@ -49,6 +49,16 @@ const SAMPLE_TREE: &[(&str, u64)] = &[
     ("logs/glyphix.log", 17837),
     ("battery/battery.txt", 64),
     ("temp/placeholder", 8),
+    // Sample offline maps (so the Maps panel is previewable in demo mode).
+    ("MAP/map/Tel_Aviv/roads.mlp", 234000),
+    ("MAP/map/Tel_Aviv/roads.idx", 88000),
+    ("MAP/map/Tel_Aviv/landuse.db", 41000),
+    ("MAP/map/Tel_Aviv/water.mlp", 2700),
+    ("MAP/map/Tel_Aviv/map.name", 0),
+    ("MAP/map/Jerusalem_OSM/roads.mlp", 310000),
+    ("MAP/map/Jerusalem_OSM/roads.idx", 120000),
+    ("MAP/map/Jerusalem_OSM/landuse.db", 52000),
+    ("MAP/map/Jerusalem_OSM/map.name", 0),
 ];
 
 /// Create the sample partition tree (and the demo menu) under `root`.
@@ -61,7 +71,17 @@ fn build_sample(root: &Path) -> std::io::Result<()> {
         if let Some(parent) = p.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        std::fs::write(&p, vec![0u8; *size as usize])?;
+        if p.file_name().and_then(|n| n.to_str()) == Some("map.name") {
+            // Give map.name a readable display name (from the parent folder).
+            let disp = p
+                .parent()
+                .and_then(|d| d.file_name())
+                .map(|n| n.to_string_lossy().replace('_', " "))
+                .unwrap_or_default();
+            std::fs::write(&p, disp.as_bytes())?;
+        } else {
+            std::fs::write(&p, vec![0u8; *size as usize])?;
+        }
     }
     let custom = root.join("custom");
     std::fs::create_dir_all(&custom)?;
@@ -407,6 +427,97 @@ fn reveal_in_explorer(state: State<'_, Demo>, rel: String) -> Result<(), String>
     Ok(())
 }
 
+#[derive(Serialize)]
+struct MapInfo {
+    name: String,
+    display: String,
+    size: u64,
+}
+
+/// The MAP/map directory on the user partition (or the demo tree).
+fn maps_dir(state: &State<'_, Demo>) -> Option<PathBuf> {
+    if let Some(d) = demo_root(state) {
+        return Some(d.join("MAP").join("map"));
+    }
+    partition::find_user().map(|r| r.join("MAP").join("map"))
+}
+
+fn dir_size(p: &Path) -> u64 {
+    let mut total = 0;
+    if let Ok(rd) = std::fs::read_dir(p) {
+        for e in rd.flatten() {
+            let path = e.path();
+            if path.is_dir() {
+                total += dir_size(&path);
+            } else if let Ok(m) = e.metadata() {
+                total += m.len();
+            }
+        }
+    }
+    total
+}
+
+fn safe_name(name: &str) -> bool {
+    !name.is_empty()
+        && !name.contains("..")
+        && !name.contains('/')
+        && !name.contains('\\')
+        && !name.contains(':')
+}
+
+/// List the offline maps installed on the watch (each folder under MAP/map).
+#[tauri::command]
+fn list_maps(state: State<'_, Demo>) -> Result<Vec<MapInfo>, String> {
+    let dir = maps_dir(&state).ok_or_else(|| "user_partition_not_mounted".to_string())?;
+    let mut out = Vec::new();
+    if let Ok(rd) = std::fs::read_dir(&dir) {
+        for e in rd.flatten() {
+            let path = e.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let name = e.file_name().to_string_lossy().into_owned();
+            let display = std::fs::read(path.join("map.name"))
+                .ok()
+                .and_then(|b| String::from_utf8(b).ok())
+                .map(|s| s.lines().next().unwrap_or("").trim().to_string())
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| name.clone());
+            out.push(MapInfo { name, display, size: dir_size(&path) });
+        }
+    }
+    out.sort_by(|a, b| a.display.to_lowercase().cmp(&b.display.to_lowercase()));
+    Ok(out)
+}
+
+/// Delete one installed map folder. Backs up nothing (maps are reproducible).
+#[tauri::command]
+fn delete_map(state: State<'_, Demo>, name: String) -> Result<(), String> {
+    if !safe_name(&name) {
+        return Err("bad_name".into());
+    }
+    let dir = maps_dir(&state).ok_or_else(|| "user_partition_not_mounted".to_string())?;
+    let target = dir.join(&name);
+    if !target.starts_with(&dir) || !target.is_dir() {
+        return Err("not_found".into());
+    }
+    std::fs::remove_dir_all(&target).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Open the MAP/map folder in Windows File Explorer (creating it if needed), so
+/// the user can drop compiled map folders in.
+#[tauri::command]
+fn reveal_maps(state: State<'_, Demo>) -> Result<(), String> {
+    let dir = maps_dir(&state).ok_or_else(|| "user_partition_not_mounted".to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    std::process::Command::new("explorer")
+        .arg(&dir)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(Demo::default())
@@ -423,7 +534,10 @@ pub fn run() {
             reveal_in_explorer,
             preview_background,
             apply_background,
-            apply_background_jpeg
+            apply_background_jpeg,
+            list_maps,
+            delete_map,
+            reveal_maps
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
