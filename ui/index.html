@@ -12,51 +12,74 @@
         <span class="logo">G1</span>
         <span class="brand-name">DT G1 Studio</span>
       </div>
-      <button id="langToggle" class="lang-toggle" type="button">EN</button>
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" type="button" title="Theme" aria-label="Theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button id="langToggle" class="lang-btn" type="button">EN</button>
+      </div>
     </header>
 
-    <nav class="tabs" id="tabs">
-      <button class="tab active" data-tab="connect" type="button"></button>
-      <button class="tab" data-tab="partition" type="button" disabled></button>
-      <button class="tab" data-tab="menu" type="button" disabled></button>
-    </nav>
+    <aside class="sidebar">
+      <button class="nav-item active" data-tab="connect" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"/></svg>
+        <span data-i18n="tab.connect"></span>
+      </button>
+      <button class="nav-item" data-tab="partition" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span data-i18n="tab.partition"></span>
+      </button>
+      <button class="nav-item" data-tab="menu" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        <span data-i18n="tab.menu"></span>
+      </button>
+      <div class="nav-sep"></div>
+      <div class="nav-hint" data-i18n="nav.hint"></div>
+    </aside>
 
     <main>
       <section id="tab-connect" class="panel active">
         <h1 data-i18n="connect.title"></h1>
-        <p class="muted" data-i18n="connect.intro"></p>
+        <p class="lead" data-i18n="connect.intro"></p>
 
-        <div class="status-card">
-          <div class="status-row">
+        <div class="card">
+          <div class="status-head">
             <span class="dot" id="statusDot"></span>
-            <span id="statusText" data-i18n="connect.unknown"></span>
+            <span class="status-text" id="statusText" data-i18n="connect.unknown"></span>
           </div>
           <p class="guide" id="guideText"></p>
         </div>
 
         <div class="actions">
-          <button id="detectBtn" class="btn primary" type="button" data-i18n="connect.detect"></button>
-          <button id="pingBtn" class="btn" type="button" data-i18n="connect.test" disabled></button>
+          <button id="detectBtn" class="btn primary" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/></svg>
+            <span data-i18n="connect.detect"></span>
+          </button>
+          <button id="pingBtn" class="btn" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span data-i18n="connect.test"></span>
+          </button>
         </div>
 
         <pre id="log" class="log" aria-live="polite"></pre>
+
+        <div class="safe-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span data-i18n="footer.safe"></span>
+        </div>
       </section>
 
       <section id="tab-partition" class="panel">
         <h1 data-i18n="partition.title"></h1>
-        <p class="muted" data-i18n="soon"></p>
+        <p class="coming" data-i18n="soon"></p>
       </section>
 
       <section id="tab-menu" class="panel">
         <h1 data-i18n="menu.title"></h1>
-        <p class="muted" data-i18n="soon"></p>
+        <p class="coming" data-i18n="soon"></p>
       </section>
     </main>
-
-    <footer class="statusbar">
-      <span data-i18n="footer.safe"></span>
-      <span id="version" class="muted"></span>
-    </footer>
 
     <script src="app.js"></script>
   </body>
