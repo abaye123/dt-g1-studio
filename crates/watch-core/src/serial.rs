@@ -52,11 +52,35 @@ pub fn find_port() -> Option<String> {
     None
 }
 
-/// Detect the current USB mode by scanning serial ports and USB devices.
-/// Note: a full mode scan including mass-storage and ADFU is done in the Tauri
-/// layer using the OS device list; here we report Charging vs Absent from the
-/// serial port list, which is enough to decide whether AT commands can be sent.
+/// Detect the current USB mode by enumerating USB devices by VID/PID.
+/// Charging wins over the others (it is the only mode we can talk to), then
+/// ADFU, then mass storage. Falls back to the serial port list if enumeration
+/// is unavailable.
 pub fn detect_mode() -> UsbMode {
+    if let Ok(devices) = nusb::list_devices() {
+        let (mut charging, mut adfu, mut mass) = (false, false, false);
+        for d in devices {
+            if d.vendor_id() == VID {
+                match d.product_id() {
+                    PID_CHARGING => charging = true,
+                    PID_ADFU => adfu = true,
+                    PID_MASS => mass = true,
+                    _ => {}
+                }
+            }
+        }
+        if charging {
+            return UsbMode::Charging;
+        }
+        if adfu {
+            return UsbMode::Adfu;
+        }
+        if mass {
+            return UsbMode::MassStorage;
+        }
+        return UsbMode::Absent;
+    }
+    // Fallback: the serial list only reveals Charging vs not.
     if find_port().is_some() {
         UsbMode::Charging
     } else {

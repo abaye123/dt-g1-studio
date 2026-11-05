@@ -9,5 +9,6 @@ authors.workspace = true
 [dependencies]
 serialport = "4.7.0"
 thiserror = "2.0.11"
+nusb = "0.1"
 
 [dev-dependencies]
