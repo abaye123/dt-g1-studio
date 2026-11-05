@@ -33,6 +33,17 @@ const I18N = {
     "partition.empty": "התיקייה ריקה.",
     "partition.root": "שורש",
     "menu.title": "עריכת התפריט",
+    "menu.intro": "טען את תפריט האפליקציות מהשעון, הסתר או סדר פריטים מחדש, ושמור בחזרה. הכלי שומר על מבנה הקובץ ומגבה אותו לפני כל כתיבה.",
+    "menu.load": "טען מהשעון",
+    "menu.save": "שמור לשעון",
+    "menu.loading": "טוען את התפריט מהשעון...",
+    "menu.need_charging": "כדי לטעון את התפריט, חבר את השעון במצב Charging mode.",
+    "menu.not_found": "קובץ התפריט לא נמצא. נסה שוב.",
+    "menu.saving": "שומר...",
+    "menu.saved": "נשמר בהצלחה. גיבוי נוצר.",
+    "menu.restart": "נתק והפעל מחדש את השעון כדי להחיל את השינויים.",
+    "menu.visible": "מוצג",
+    "menu.hidden": "מוסתר",
     "soon": "בבנייה. יתווסף בקרוב.",
     "footer.safe": "קריאה בלבד ומעברי-מצב בלבד. אין כתיבה או מחיקה לקושחה.",
   },
@@ -67,6 +78,17 @@ const I18N = {
     "partition.empty": "The folder is empty.",
     "partition.root": "root",
     "menu.title": "Menu editor",
+    "menu.intro": "Load the app menu from the watch, hide or reorder items, and save it back. The tool keeps the file structure intact and backs it up before every write.",
+    "menu.load": "Load from watch",
+    "menu.save": "Save to watch",
+    "menu.loading": "Loading the menu from the watch...",
+    "menu.need_charging": "To load the menu, connect the watch in Charging mode.",
+    "menu.not_found": "Menu file not found. Try again.",
+    "menu.saving": "Saving...",
+    "menu.saved": "Saved. A backup was created.",
+    "menu.restart": "Disconnect and restart the watch to apply the changes.",
+    "menu.visible": "Shown",
+    "menu.hidden": "Hidden",
     "soon": "Under construction. Coming soon.",
     "footer.safe": "Read-only and mode-change only. No firmware writes or erases.",
   },
@@ -260,6 +282,104 @@ function switchTab(name) {
   document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
 }
 
+/* ---------- Menu editor ---------- */
+const upSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>';
+const downSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+
+let menuModel = [];
+
+function mkReorder(svg, disabled, fn) {
+  const b = document.createElement("button");
+  b.className = "reorder-btn";
+  b.type = "button";
+  b.innerHTML = svg;
+  b.disabled = disabled;
+  if (!disabled) b.addEventListener("click", fn);
+  return b;
+}
+
+function moveMenu(from, to) {
+  const x = menuModel.splice(from, 1)[0];
+  menuModel.splice(to, 0, x);
+  renderMenu();
+}
+
+function renderMenu() {
+  const list = document.getElementById("menuList");
+  list.style.display = "block";
+  list.innerHTML = "";
+  menuModel.forEach((s, i) => {
+    const row = document.createElement("div");
+    row.className = "menu-row" + (s.visible ? "" : " hidden");
+
+    const sw = document.createElement("label");
+    sw.className = "switch";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = s.visible;
+    cb.addEventListener("change", () => {
+      s.visible = cb.checked;
+      row.classList.toggle("hidden", !s.visible);
+    });
+    const slider = document.createElement("span");
+    slider.className = "slider";
+    sw.append(cb, slider);
+
+    const label = document.createElement("div");
+    label.className = "menu-label";
+    label.innerHTML = '<span class="menu-name"></span><span class="menu-hex"></span>';
+    label.querySelector(".menu-name").textContent =
+      s.name && s.name !== "?" ? s.name : "AppID " + s.hex;
+    label.querySelector(".menu-hex").textContent = s.hex;
+
+    const re = document.createElement("div");
+    re.className = "menu-reorder";
+    re.append(
+      mkReorder(upSvg, i === 0, () => moveMenu(i, i - 1)),
+      mkReorder(downSvg, i === menuModel.length - 1, () => moveMenu(i, i + 1))
+    );
+
+    row.append(sw, label, re);
+    list.appendChild(row);
+  });
+}
+
+async function loadMenu() {
+  const msg = document.getElementById("menuMsg");
+  msg.textContent = t("menu.loading");
+  try {
+    menuModel = await invoke("menu_load");
+    msg.textContent = "";
+    renderMenu();
+    document.getElementById("menuSave").disabled = false;
+  } catch (e) {
+    const s = String(e);
+    msg.textContent = s.includes("charging")
+      ? t("menu.need_charging")
+      : s.includes("not_found") || s.includes("menu")
+      ? t("menu.not_found")
+      : s;
+  }
+}
+
+async function saveMenu() {
+  const msg = document.getElementById("menuMsg");
+  msg.textContent = t("menu.saving");
+  try {
+    const slots = menuModel.map((s) => ({
+      app_id: s.app_id,
+      icon_id: s.icon_id,
+      name_id: s.name_id,
+      visible: s.visible,
+    }));
+    await invoke("menu_save", { slots });
+    msg.textContent = t("menu.saved");
+    document.getElementById("menuRestart").style.display = "flex";
+  } catch (e) {
+    msg.textContent = String(e);
+  }
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   applyStoredTheme();
   applyI18n();
@@ -278,6 +398,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("pingBtn").addEventListener("click", ping);
   document.getElementById("exposeBtn").addEventListener("click", exposePartition);
   document.getElementById("partRefresh").addEventListener("click", () => partBrowse(partPath));
+  document.getElementById("menuLoad").addEventListener("click", loadMenu);
+  document.getElementById("menuSave").addEventListener("click", saveMenu);
   document.querySelectorAll(".nav-item").forEach((b) => {
     b.addEventListener("click", () => { if (!b.disabled) switchTab(b.dataset.tab); });
   });

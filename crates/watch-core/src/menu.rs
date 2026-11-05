@@ -83,6 +83,25 @@ impl Menu {
         (0..SLOT_COUNT).filter(|&i| !self.slots[i].is_empty()).collect()
     }
 
+    /// The non-empty slots, in order.
+    pub fn used_slots(&self) -> Vec<Slot> {
+        self.slots.iter().copied().filter(|s| !s.is_empty()).collect()
+    }
+
+    /// Build a menu from an ordered list of slots (placed at the start; the rest
+    /// are empty). Fails if there are more slots than the 100-slot capacity.
+    /// This matches the observed layout, where used slots are contiguous.
+    pub fn from_slots(slots: &[Slot]) -> Result<Menu, Error> {
+        if slots.len() > SLOT_COUNT {
+            return Err(Error::MenuIndex(slots.len()));
+        }
+        let mut m = Menu { slots: [Slot::EMPTY; SLOT_COUNT] };
+        for (i, s) in slots.iter().enumerate() {
+            m.slots[i] = *s;
+        }
+        Ok(m)
+    }
+
     /// Set the visible flag of the first slot with this AppID. Returns true if found.
     pub fn set_visible(&mut self, app_id: u32, visible: bool) -> bool {
         for slot in self.slots.iter_mut() {
@@ -172,6 +191,23 @@ mod tests {
         let mut m = Menu::parse(&sample()).unwrap();
         let missing = m.hide_all(&[0xDEAD]);
         assert_eq!(missing, vec![0xDEAD]);
+    }
+
+    #[test]
+    fn from_slots_round_trips_used() {
+        let m = Menu::parse(&sample()).unwrap();
+        let used = m.used_slots();
+        assert_eq!(used.len(), 2);
+        let rebuilt = Menu::from_slots(&used).unwrap();
+        // The sample's used slots are already contiguous at the start.
+        assert_eq!(rebuilt.to_bytes(), sample());
+        assert_eq!(rebuilt.to_bytes().len(), MENU_SIZE);
+    }
+
+    #[test]
+    fn from_slots_rejects_overflow() {
+        let too_many = vec![Slot { app_id: 1, icon_id: 0, name_id: 0, flags: 1 }; SLOT_COUNT + 1];
+        assert!(Menu::from_slots(&too_many).is_err());
     }
 
     #[test]

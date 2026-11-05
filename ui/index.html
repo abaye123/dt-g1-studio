@@ -92,7 +92,23 @@
 
       <section id="tab-menu" class="panel">
         <h1 data-i18n="menu.title"></h1>
-        <p class="coming" data-i18n="soon"></p>
+        <p class="lead" data-i18n="menu.intro"></p>
+        <div class="actions">
+          <button id="menuLoad" class="btn primary" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+            <span data-i18n="menu.load"></span>
+          </button>
+          <button id="menuSave" class="btn" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+            <span data-i18n="menu.save"></span>
+          </button>
+        </div>
+        <p id="menuMsg" class="coming"></p>
+        <div id="menuList" class="menu-list" style="display:none"></div>
+        <div id="menuRestart" class="safe-note" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+          <span data-i18n="menu.restart"></span>
+        </div>
       </section>
     </main>
 
