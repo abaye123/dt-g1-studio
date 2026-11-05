@@ -83,7 +83,7 @@ Source: the reference docs in `dt-g1-research/docs/reference/` (oppo-watch-s-sid
 
 ### 5.2 Packaging
 - `.pkg` is an unsigned flat "CR" archive (see `dt-g1-research/docs/firmware-analysis/debug-command-table.md` and the PKG_FORMAT reference). No signature, so building is just packing. `.js` is compiled to bytecode and `.uo` is compiled UI by the toolchain; `.png` is converted to PGF.
-- Build with the official Glyphix CLI (`gx build -d <device> -f`). A device profile `dtg1-c175r.yml` (vendorID `0x0102`, productID `0x0005`, 466x466 circle) is in `dt-g1-research/apps/whose-watch/`.
+- Build with the official Glyphix CLI (`gx build -d <device> -f`). A device profile `dtg1-c175r.yml` (vendorID `0x0102`, productID `0x0005`, 466x466 circle) is in `dt-g1-apps/whose-watch/`.
 - Install: copy the `.pkg` into `/1:/gui/apps/`, add an entry to `/1:/gui/pkgs.db`, and point a menu slot at the app's AppID. The watch menu is a fixed list, so a new app reuses an existing slot (for example the Wooden Fish slot `0xC82C`), and its menu name stays the built-in name of that AppID.
 
 ### 5.3 Available system modules (`@system.*`)
@@ -102,7 +102,7 @@ Observed and documented; confirm exact signatures against the `ai_context` refer
 ### 5.5 Hebrew
 Hebrew is a supported system language. The firmware's language list includes Hebrew (`m_he-il.hex`), and the system font is `harmony.ttf` (HarmonyOS Sans), which includes Hebrew glyphs. The watch UI itself shows Hebrew (the About screen does). The three app-level fonts in `/1:/gui/fonts` (AliPuHui, NotoSans, NotoNaskhArabic) have no Hebrew, but that is the app font set, not the system font.
 
-CONFIRMED (2026-11-05): a test app (`dt-g1-research/apps/hebrew-test`) that prints live Hebrew `<text>` with no bundled font and no image rendered correctly on the watch - crisp Hebrew letters, right-to-left order, no missing glyphs. So the app renderer uses the system font (which has Hebrew). The app builder uses live Hebrew text (correct, selectable, easy to edit); the pre-rendered image path (what the `whose-watch` sample did with Varela Round) stays only as a fallback for custom fonts or effects. Note: the `.ux` `direction: rtl` style is ignored by the compiler, but Hebrew is strong-RTL so the renderer orders it correctly on its own; use `text-align` for alignment.
+CONFIRMED (2026-11-05): a test app (`dt-g1-apps/hebrew-test`) that prints live Hebrew `<text>` with no bundled font and no image rendered correctly on the watch - crisp Hebrew letters, right-to-left order, no missing glyphs. So the app renderer uses the system font (which has Hebrew). The app builder uses live Hebrew text (correct, selectable, easy to edit); the pre-rendered image path (what the `whose-watch` sample did with Varela Round) stays only as a fallback for custom fonts or effects. Note: the `.ux` `direction: rtl` style is ignored by the compiler, but Hebrew is strong-RTL so the renderer orders it correctly on its own; use `text-align` for alignment.
 
 ## 6. Roadmap
 
