@@ -20,6 +20,10 @@ const I18N = {
     "guide.mass": "בשעון: הגדרות ‹ מצב USB ‹ בחר Charging mode, ואז נתק וחבר מחדש.",
     "guide.adfu": "השעון במצב הורדה. נתק וחבר מחדש כדי לחזור למצב רגיל.",
     "guide.absent": "חבר את השעון לעריסת הטעינה ולמחשב. אם כבר מחובר, בדוק שהעריסה יושבת טוב.",
+    "status.demo": "מצב הדגמה - נתוני דוגמה",
+    "guide.demo": "אתה עובד מול נתוני דוגמה, בלי שעון. אפשר לעיין בדפדפן המחיצה ובעורך התפריט כדי לראות איך הם נראים ועובדים.",
+    "demo.banner": "מצב הדגמה פעיל - כל הנתונים הם דוגמה, שום שינוי לא נכתב לשעון.",
+    "demo.off": "כבה הדגמה",
     "ping.ok": "החיבור תקין. השעון השיב.",
     "ping.fail": "בדיקת החיבור נכשלה",
     "partition.title": "המחיצה המוסתרת",
@@ -65,6 +69,10 @@ const I18N = {
     "guide.mass": "On the watch: Settings › USB mode › choose Charging mode, then reconnect.",
     "guide.adfu": "The watch is in download mode. Reconnect it to return to normal.",
     "guide.absent": "Connect the watch to its charging dock and the PC. If it is already connected, check the dock contact.",
+    "status.demo": "Demo mode - sample data",
+    "guide.demo": "You are working with sample data, no watch needed. Browse the partition and the menu editor to see how they look and work.",
+    "demo.banner": "Demo mode is on - all data is sample data, nothing is written to a watch.",
+    "demo.off": "Turn off demo",
     "ping.ok": "Connection works. The watch replied.",
     "ping.fail": "Connection test failed",
     "partition.title": "Hidden partition",
@@ -160,11 +168,28 @@ function setStatus(mode) {
   guide.textContent = t("guide." + mode);
   pingBtn.disabled = mode !== "charging";
 
-  // Enable feature tabs by mode: partition works in charging or mass; menu needs charging.
+  // Enable feature tabs: partition works in charging/mass/demo; menu in charging/demo.
   const partTab = document.querySelector('.nav-item[data-tab="partition"]');
   const menuTab = document.querySelector('.nav-item[data-tab="menu"]');
-  if (partTab) partTab.disabled = !(mode === "charging" || mode === "mass");
-  if (menuTab) menuTab.disabled = mode !== "charging";
+  if (partTab) partTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
+  if (menuTab) menuTab.disabled = !(mode === "charging" || mode === "demo");
+}
+
+/* ---------- Demo mode ---------- */
+let demoOn = false;
+async function toggleDemo(force) {
+  const want = force !== undefined ? force : !demoOn;
+  try {
+    if (want) await invoke("enable_demo", { path: null });
+    else await invoke("disable_demo");
+    demoOn = want;
+    document.getElementById("demoToggle").classList.toggle("on", demoOn);
+    document.getElementById("demoBanner").style.display = demoOn ? "flex" : "none";
+    document.getElementById("menuRestart").style.display = "none";
+    await detect(true);
+  } catch (e) {
+    log("demo error: " + e);
+  }
 }
 
 /* ---------- Partition browser ---------- */
@@ -386,6 +411,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("themeToggle").addEventListener("click", toggleTheme);
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", updateThemeIcon);
+  document.getElementById("demoToggle").addEventListener("click", () => toggleDemo());
+  document.getElementById("demoOff").addEventListener("click", () => toggleDemo(false));
 
   document.getElementById("langToggle").addEventListener("click", () => {
     lang = lang === "he" ? "en" : "he";

@@ -13,6 +13,9 @@
         <span class="brand-name">DT G1 Studio</span>
       </div>
       <div class="header-actions">
+        <button id="demoToggle" class="icon-btn" type="button" title="Demo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6l-4.5 8A2 2 0 0 0 7.3 20h9.4a2 2 0 0 0 1.8-3L14 9V3"/></svg>
+        </button>
         <button id="themeToggle" class="icon-btn" type="button" title="Theme" aria-label="Theme">
           <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
           <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -39,6 +42,12 @@
     </aside>
 
     <main>
+      <div id="demoBanner" class="demo-banner" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6l-4.5 8A2 2 0 0 0 7.3 20h9.4a2 2 0 0 0 1.8-3L14 9V3"/></svg>
+        <span data-i18n="demo.banner"></span>
+        <button id="demoOff" class="demo-off" type="button" data-i18n="demo.off"></button>
+      </div>
+
       <section id="tab-connect" class="panel active">
         <h1 data-i18n="connect.title"></h1>
         <p class="lead" data-i18n="connect.intro"></p>
