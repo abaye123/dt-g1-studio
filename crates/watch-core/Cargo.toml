@@ -3,7 +3,7 @@ name = "watch-core"
 description = "Core logic for talking to a DT G1 (ATS3085S / Glyphix) watch: serial AT channel, USB mode detection, and menu_list.cfg editing."
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license-file.workspace = true
 authors.workspace = true
 
 [dependencies]

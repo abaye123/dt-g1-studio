@@ -37,4 +37,4 @@ Read-only or clearly-marked mode-change operations by default. Any action that w
 
 ## License
 
-TBD. The font and any third-party assets keep their own licenses.
+Personal, non-commercial use. Anything you share that is based on this project must be published as open source under the same license. Commercial use requires prior written permission. See [LICENSE](LICENSE), which also lists the third-party material it does not cover.
