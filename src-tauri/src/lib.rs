@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+mod mapcompile;
+
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, State};
@@ -518,6 +520,102 @@ fn reveal_maps(state: State<'_, Demo>) -> Result<(), String> {
     Ok(())
 }
 
+#[derive(Serialize)]
+struct FileSize {
+    name: String,
+    size: u64,
+}
+
+#[derive(Serialize)]
+struct CompileResult {
+    osm_bytes: u64,
+    total: u64,
+    files: Vec<FileSize>,
+}
+
+fn app_dir(app: &tauri::AppHandle, sub: &str) -> Result<PathBuf, String> {
+    let d = app.path().app_data_dir().map_err(|e| e.to_string())?.join(sub);
+    Ok(d)
+}
+
+/// Is the OSM map compiler downloaded and ready?
+#[tauri::command]
+fn map_compiler_ready(app: tauri::AppHandle) -> bool {
+    app_dir(&app, "map-compiler")
+        .map(|d| mapcompile::is_ready(&d))
+        .unwrap_or(false)
+}
+
+/// Download the official dtg1-map-tools compiler (one time, from its GitHub
+/// release). About 13 MB. Returns when ready.
+#[tauri::command]
+fn map_compiler_setup(app: tauri::AppHandle) -> Result<(), String> {
+    let dir = app_dir(&app, "map-compiler")?;
+    mapcompile::setup(&dir)
+}
+
+/// Download OSM data for a bounding box and compile it to a watch map, staged
+/// locally. Returns the OSM size and the produced map files with sizes.
+#[tauri::command]
+fn compile_region(
+    app: tauri::AppHandle,
+    west: f64,
+    south: f64,
+    east: f64,
+    north: f64,
+    name: String,
+    poi_mode: String,
+) -> Result<CompileResult, String> {
+    if !safe_name(&name) {
+        return Err("bad_name".into());
+    }
+    let poi = match poi_mode.as_str() {
+        "native" | "landuse" | "none" => poi_mode.as_str(),
+        _ => "landuse",
+    };
+    let compiler_dir = app_dir(&app, "map-compiler")?;
+    if !mapcompile::is_ready(&compiler_dir) {
+        return Err("compiler_not_ready".into());
+    }
+    let osm = app_dir(&app, "tmp")?.join("map.osm");
+    let osm_bytes = mapcompile::download_osm(west, south, east, north, &osm)?;
+    let staging = app_dir(&app, "map-staging")?.join(&name);
+    let files = mapcompile::compile(&compiler_dir, &osm, &staging, &name, poi)?;
+    let _ = std::fs::remove_file(&osm);
+    let total = files.iter().map(|(_, s)| *s).sum();
+    Ok(CompileResult {
+        osm_bytes,
+        total,
+        files: files.into_iter().map(|(name, size)| FileSize { name, size }).collect(),
+    })
+}
+
+/// Copy a staged compiled map onto the watch (MAP/map/<name>).
+#[tauri::command]
+fn install_compiled_map(
+    app: tauri::AppHandle,
+    state: State<'_, Demo>,
+    name: String,
+) -> Result<(), String> {
+    if !safe_name(&name) {
+        return Err("bad_name".into());
+    }
+    let staging = app_dir(&app, "map-staging")?.join(&name);
+    if !staging.is_dir() {
+        return Err("not_compiled".into());
+    }
+    let dir = maps_dir(&state).ok_or_else(|| "user_partition_not_mounted".to_string())?;
+    let dest = dir.join(&name);
+    std::fs::create_dir_all(&dest).map_err(|e| e.to_string())?;
+    for entry in std::fs::read_dir(&staging).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if entry.path().is_file() {
+            std::fs::copy(entry.path(), dest.join(entry.file_name())).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(Demo::default())
@@ -537,7 +635,11 @@ pub fn run() {
             apply_background_jpeg,
             list_maps,
             delete_map,
-            reveal_maps
+            reveal_maps,
+            map_compiler_ready,
+            map_compiler_setup,
+            compile_region,
+            install_compiled_map
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
