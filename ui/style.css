@@ -142,15 +142,16 @@ body {
 /* ---------- Background editor ---------- */
 .bg-editor {
   display: flex;
-  gap: 26px;
-  align-items: center;
+  gap: 28px;
+  align-items: flex-start;
   flex-wrap: wrap;
   margin-top: 8px;
 }
+.bg-stage { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .bg-frame {
   position: relative;
-  width: 240px;
-  height: 240px;
+  width: 300px;
+  height: 300px;
   border-radius: 50%;
   overflow: hidden;
   background: var(--surface-2);
@@ -159,25 +160,42 @@ body {
   display: grid;
   place-items: center;
 }
-.bg-frame img { width: 100%; height: 100%; object-fit: cover; display: none; }
-.bg-frame.has-img img { display: block; }
+.bg-frame canvas { width: 100%; height: 100%; display: none; cursor: grab; touch-action: none; }
+.bg-frame canvas:active { cursor: grabbing; }
+.bg-frame.has-img canvas { display: block; }
 .bg-frame.has-img .bg-placeholder { display: none; }
-.bg-placeholder { color: var(--muted); font-size: 13px; padding: 0 20px; text-align: center; }
-.bg-controls { display: flex; flex-direction: column; gap: 14px; min-width: 200px; }
-.bg-controls label.btn { cursor: pointer; }
-.bg-fit { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 2px; width: fit-content; }
-.chip {
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  padding: 7px 16px;
-  border-radius: 8px;
-  cursor: pointer;
+.bg-placeholder { color: var(--muted); font-size: 13px; padding: 0 24px; text-align: center; }
+.bg-hint { color: var(--muted); font-size: 12px; margin: 0; }
+
+.bg-controls { display: flex; flex-direction: column; gap: 16px; min-width: 240px; flex: 1; }
+.bg-controls label.btn { cursor: pointer; width: fit-content; }
+.ctrl { display: flex; flex-direction: column; gap: 7px; }
+.ctrl > label { font-size: 13px; color: var(--muted); font-weight: 500; }
+.ctrl .row { display: flex; align-items: center; gap: 10px; }
+.ctrl input[type="text"] {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 9px 12px;
+  color: var(--text);
   font-family: inherit;
-  font-size: 13.5px;
-  font-weight: 500;
+  font-size: 14px;
 }
-.chip.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.ctrl input[type="text"]:focus { outline: none; border-color: var(--accent); }
+input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+}
+input[type="color"] {
+  width: 38px; height: 34px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 2px;
+  cursor: pointer;
+}
+.bg-actions { display: flex; gap: 10px; margin-top: 4px; }
 
 /* ---------- Demo banner ---------- */
 .demo-banner {

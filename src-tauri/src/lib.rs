@@ -362,6 +362,27 @@ fn apply_background(state: State<'_, Demo>, image_b64: String, fit: String) -> R
     Ok(())
 }
 
+/// Write an already-rendered 466x466 JPEG (from the editor canvas) as the watch
+/// background. This is the WYSIWYG path: the canvas is the exact output.
+#[tauri::command]
+fn apply_background_jpeg(state: State<'_, Demo>, jpeg_b64: String) -> Result<(), String> {
+    let root = demo_root(&state)
+        .or_else(partition::find)
+        .ok_or_else(|| "partition_not_mounted".to_string())?;
+    let jpeg = base64::engine::general_purpose::STANDARD
+        .decode(jpeg_b64)
+        .map_err(|e| e.to_string())?;
+    if jpeg.len() < 4 || jpeg[0..3] != [0xFF, 0xD8, 0xFF] {
+        return Err("not_jpeg".into());
+    }
+    let file = watch_core::background::wrap_jpeg(&jpeg);
+    let res_dir = root.join("res");
+    std::fs::create_dir_all(&res_dir).map_err(|e| e.to_string())?;
+    std::fs::write(res_dir.join("user_clock_bg.bin"), &file).map_err(|e| e.to_string())?;
+    std::fs::write(res_dir.join("user_clock_thumb.bin"), &file).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Open the current partition folder in Windows File Explorer. `rel` is the
 /// path relative to the partition root ("" for the root / drive).
 #[tauri::command]
@@ -401,7 +422,8 @@ pub fn run() {
             disable_demo,
             reveal_in_explorer,
             preview_background,
-            apply_background
+            apply_background,
+            apply_background_jpeg
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

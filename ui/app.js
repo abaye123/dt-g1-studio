@@ -52,11 +52,14 @@ const I18N = {
     "menu.hidden": "מוסתר",
     "tab.background": "רקע שעון",
     "bg.title": "רקע מותאם",
-    "bg.intro": "בחר תמונה, קבע כיצד היא ממלאת את המסך העגול, וראה תצוגה מקדימה. 'החל' כותב את הרקע לשעון (res/user_clock_bg.bin).",
+    "bg.intro": "בחר תמונה, גרור למיקום המדויק, הגדל בזום, והוסף גוון או טקסט. התצוגה המקדימה העגולה היא בדיוק מה שייכתב לשעון (res/user_clock_bg.bin).",
     "bg.pick": "בחר תמונה",
     "bg.pick_hint": "לא נבחרה תמונה",
-    "bg.cover": "מילוי",
-    "bg.contain": "התאמה",
+    "bg.drag_hint": "גרור להזזה, גלגל העכבר לזום",
+    "bg.zoom": "זום",
+    "bg.tint": "גוון צבע",
+    "bg.text": "טקסט",
+    "bg.reset": "איפוס",
     "bg.apply": "החל לשעון",
     "bg.applying": "כותב את הרקע...",
     "bg.done": "הרקע נכתב. בשעון, בחר את חזית התמונה המותאמת, והפעל מחדש אם צריך.",
@@ -114,11 +117,14 @@ const I18N = {
     "menu.hidden": "Hidden",
     "tab.background": "Watch face",
     "bg.title": "Custom background",
-    "bg.intro": "Pick an image, choose how it fills the round screen, and preview it. Apply writes the background to the watch (res/user_clock_bg.bin).",
+    "bg.intro": "Pick an image, drag to position, zoom in, and add a tint or text. The round preview is exactly what gets written to the watch (res/user_clock_bg.bin).",
     "bg.pick": "Choose image",
     "bg.pick_hint": "No image selected",
-    "bg.cover": "Fill",
-    "bg.contain": "Fit",
+    "bg.drag_hint": "Drag to move, scroll to zoom",
+    "bg.zoom": "Zoom",
+    "bg.tint": "Color tint",
+    "bg.text": "Text",
+    "bg.reset": "Reset",
     "bg.apply": "Apply to watch",
     "bg.applying": "Writing the background...",
     "bg.done": "Background written. On the watch, select the custom photo face, and restart if needed.",
@@ -203,43 +209,139 @@ function setStatus(mode) {
   if (bgTab) bgTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
 }
 
-/* ---------- Background editor ---------- */
-let bgB64 = null;
-let bgFit = "cover";
+/* ---------- Background editor (interactive canvas) ---------- */
+const SIDE = 466;
+let bgImage = null;
+let bgView = { scale: 1, x: 0, y: 0 };
+let bgEnrich = { tintColor: "#000000", tintAmt: 0, text: "", textColor: "#ffffff", textSize: 46 };
 
-function fileToB64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(String(r.result).split(",")[1]);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
+function bgCanvas() { return document.getElementById("bgCanvas"); }
 
-async function bgPreview() {
-  if (!bgB64) return;
-  try {
-    const jpeg = await invoke("preview_background", { imageB64: bgB64, fit: bgFit });
-    document.getElementById("bgImg").src = "data:image/jpeg;base64," + jpeg;
-    document.getElementById("bgFrame").classList.add("has-img");
-    document.getElementById("bgApply").disabled = false;
-    document.getElementById("bgDone").style.display = "none";
-  } catch (e) {
-    document.getElementById("bgMsg").textContent = String(e);
+function bgDraw() {
+  const ctx = bgCanvas().getContext("2d");
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, SIDE, SIDE);
+  if (bgImage) {
+    ctx.drawImage(bgImage, bgView.x, bgView.y, bgImage.width * bgView.scale, bgImage.height * bgView.scale);
+  }
+  if (bgEnrich.tintAmt > 0) {
+    ctx.save();
+    ctx.globalAlpha = bgEnrich.tintAmt / 100;
+    ctx.fillStyle = bgEnrich.tintColor;
+    ctx.fillRect(0, 0, SIDE, SIDE);
+    ctx.restore();
+  }
+  if (bgEnrich.text) {
+    ctx.save();
+    ctx.font = `700 ${bgEnrich.textSize}px Rubik, sans-serif`;
+    ctx.fillStyle = bgEnrich.textColor;
+    ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(0,0,0,.55)";
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+    ctx.fillText(bgEnrich.text, SIDE / 2, SIDE - 66, SIDE - 56);
+    ctx.restore();
   }
 }
 
+function bgClamp() {
+  if (!bgImage) return;
+  const w = bgImage.width * bgView.scale, h = bgImage.height * bgView.scale;
+  if (w >= SIDE) bgView.x = Math.min(0, Math.max(SIDE - w, bgView.x));
+  if (h >= SIDE) bgView.y = Math.min(0, Math.max(SIDE - h, bgView.y));
+}
+
+function bgFitCover() {
+  if (!bgImage) return;
+  const s = Math.max(SIDE / bgImage.width, SIDE / bgImage.height);
+  bgView.scale = s;
+  bgView.x = (SIDE - bgImage.width * s) / 2;
+  bgView.y = (SIDE - bgImage.height * s) / 2;
+  document.getElementById("bgZoom").value = 100;
+  bgDraw();
+}
+
+function bgZoomTo(percent) {
+  if (!bgImage) return;
+  const base = Math.max(SIDE / bgImage.width, SIDE / bgImage.height);
+  const s1 = base * (percent / 100);
+  const s0 = bgView.scale;
+  const c = SIDE / 2;
+  bgView.x = c - ((c - bgView.x) / s0) * s1;
+  bgView.y = c - ((c - bgView.y) / s0) * s1;
+  bgView.scale = s1;
+  bgClamp();
+  bgDraw();
+}
+
+function bgLoadFile(file) {
+  const url = URL.createObjectURL(file);
+  const im = new Image();
+  im.onload = () => {
+    bgImage = im;
+    document.getElementById("bgFrame").classList.add("has-img");
+    document.getElementById("bgApply").disabled = false;
+    document.getElementById("bgDone").style.display = "none";
+    bgFitCover();
+    URL.revokeObjectURL(url);
+  };
+  im.src = url;
+}
+
+function bgSetupPan() {
+  const c = bgCanvas();
+  let dragging = false, lastX = 0, lastY = 0;
+  c.addEventListener("pointerdown", (e) => {
+    if (!bgImage) return;
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    c.setPointerCapture(e.pointerId);
+  });
+  c.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const r = c.getBoundingClientRect();
+    bgView.x += (e.clientX - lastX) * (SIDE / r.width);
+    bgView.y += (e.clientY - lastY) * (SIDE / r.height);
+    lastX = e.clientX; lastY = e.clientY;
+    bgClamp(); bgDraw();
+  });
+  c.addEventListener("pointerup", () => { dragging = false; });
+  c.addEventListener("wheel", (e) => {
+    if (!bgImage) return;
+    e.preventDefault();
+    const z = document.getElementById("bgZoom");
+    z.value = Math.max(100, Math.min(400, Number(z.value) + (e.deltaY < 0 ? 12 : -12)));
+    bgZoomTo(Number(z.value));
+  }, { passive: false });
+}
+
 async function bgApply() {
-  if (!bgB64) return;
+  if (!bgImage) return;
   const msg = document.getElementById("bgMsg");
   msg.textContent = t("bg.applying");
   try {
-    await invoke("apply_background", { imageB64: bgB64, fit: bgFit });
+    const blob = await new Promise((res) => bgCanvas().toBlob(res, "image/jpeg", 0.9));
+    const b64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).split(",")[1]);
+      r.onerror = rej;
+      r.readAsDataURL(blob);
+    });
+    await invoke("apply_background_jpeg", { jpegB64: b64 });
     msg.textContent = "";
     document.getElementById("bgDone").style.display = "flex";
   } catch (e) {
     msg.textContent = String(e).includes("not_mounted") ? t("bg.need") : String(e);
   }
+}
+
+function bgReset() {
+  bgEnrich = { tintColor: "#000000", tintAmt: 0, text: "", textColor: "#ffffff", textSize: 46 };
+  document.getElementById("bgTintColor").value = "#000000";
+  document.getElementById("bgTintAmt").value = 0;
+  document.getElementById("bgText").value = "";
+  document.getElementById("bgTextColor").value = "#ffffff";
+  document.getElementById("bgTextSize").value = 46;
+  bgFitCover();
 }
 
 /* ---------- Demo mode ---------- */
@@ -499,20 +601,19 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("menuLoad").addEventListener("click", loadMenu);
   document.getElementById("menuSave").addEventListener("click", saveMenu);
-  document.getElementById("bgInput").addEventListener("change", async (e) => {
+  document.getElementById("bgInput").addEventListener("change", (e) => {
     const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    bgB64 = await fileToB64(file);
-    await bgPreview();
+    if (file) bgLoadFile(file);
   });
-  document.querySelectorAll("#bgFit .chip").forEach((c) => {
-    c.addEventListener("click", () => {
-      document.querySelectorAll("#bgFit .chip").forEach((x) => x.classList.toggle("active", x === c));
-      bgFit = c.dataset.fit;
-      bgPreview();
-    });
-  });
+  document.getElementById("bgZoom").addEventListener("input", (e) => bgZoomTo(Number(e.target.value)));
+  document.getElementById("bgTintColor").addEventListener("input", (e) => { bgEnrich.tintColor = e.target.value; bgDraw(); });
+  document.getElementById("bgTintAmt").addEventListener("input", (e) => { bgEnrich.tintAmt = Number(e.target.value); bgDraw(); });
+  document.getElementById("bgText").addEventListener("input", (e) => { bgEnrich.text = e.target.value; bgDraw(); });
+  document.getElementById("bgTextColor").addEventListener("input", (e) => { bgEnrich.textColor = e.target.value; bgDraw(); });
+  document.getElementById("bgTextSize").addEventListener("input", (e) => { bgEnrich.textSize = Number(e.target.value); bgDraw(); });
   document.getElementById("bgApply").addEventListener("click", bgApply);
+  document.getElementById("bgReset").addEventListener("click", bgReset);
+  bgSetupPan();
   document.querySelectorAll(".nav-item").forEach((b) => {
     b.addEventListener("click", () => { if (!b.disabled) switchTab(b.dataset.tab); });
   });
