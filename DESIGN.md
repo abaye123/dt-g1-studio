@@ -106,7 +106,7 @@ CONFIRMED (2026-11-05): a test app (`dt-g1-research/apps/hebrew-test`) that prin
 
 ## 6. Roadmap
 
-- v1: connection wizard, hidden partition browser, menu editor. All read-mostly, proven operations.
+- v1: connection wizard, hidden partition browser, menu editor. All read-mostly, proven operations. IMPLEMENTED (2026-11-05): the Tauri app builds and runs with all three panels. watch-core (menu parsing, serial AT channel, USB mode detection, partition listing) has unit tests. The watch-connected flows (load/save menu, browse the partition) are coded but still need verification on the watch; do that when the watch is next connected.
 - v2: feature parity with the WearPro app (what the companion app offers), reverse-engineered from the WearPro APK kept in `dt-g1-research/reverse-engineering/wearpro-apk/`. Likely items: editing watch-face backgrounds and dials, transferring images and photos, pushing music and maps. Each is reimplemented over the same USB/serial and partition access the tool already has.
 - v2 also: app builder (templates: image-screen app like whose-watch, and an audio player using `@system.media`), invoking the Glyphix CLI, with live Hebrew text once confirmed.
 - v3: advanced ADFU dump on Linux.

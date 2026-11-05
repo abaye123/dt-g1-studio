@@ -8,7 +8,17 @@ Built with Tauri (Rust backend + web UI). The knowledge this is based on lives i
 
 ## Status
 
-Planning / scaffolding. See `DESIGN.md` for the architecture and roadmap.
+v1 implemented: the three panels below build and run. Pure logic is unit-tested; the watch-connected flows still need verification on the device. See `DESIGN.md`.
+
+## Run
+
+Needs Rust and WebView2 (both present on the dev machine). From this folder:
+
+```
+cargo run -p dt-g1-studio-app
+```
+
+First build compiles the Tauri stack (a few minutes); later builds are fast. A signed installer is a later step (the code-signing certificate is on the dev machine).
 
 ## Planned features (v1)
 
