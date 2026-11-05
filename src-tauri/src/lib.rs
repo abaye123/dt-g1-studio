@@ -1,7 +1,10 @@
 //! Tauri shell for DT G1 Studio. Exposes a small set of commands over
 //! `watch-core` to the web UI. Only read or reversible mode-change actions.
 
+use std::time::{Duration, Instant};
+
 use serde::Serialize;
+use watch_core::partition;
 use watch_core::serial::{self, SafeCommand, UsbMode};
 
 #[derive(Serialize)]
@@ -45,12 +48,52 @@ fn app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+#[derive(Serialize)]
+struct DirEntry {
+    name: String,
+    is_dir: bool,
+    size: u64,
+}
+
+/// Expose the hidden partition (sends realUpan + mass, then waits for the drive
+/// to mount) and return its root path, e.g. "E:\\". Requires Charging mode.
+#[tauri::command]
+fn expose_partition() -> Result<String, String> {
+    // If it is already mounted, just return it.
+    if let Some(root) = partition::find() {
+        return Ok(root.to_string_lossy().into_owned());
+    }
+    partition::expose().map_err(|e| e.to_string())?;
+    let deadline = Instant::now() + Duration::from_secs(40);
+    while Instant::now() < deadline {
+        if let Some(root) = partition::find() {
+            return Ok(root.to_string_lossy().into_owned());
+        }
+        std::thread::sleep(Duration::from_millis(800));
+    }
+    Err("partition_not_found".into())
+}
+
+/// List a directory under the hidden partition, read-only. `rel` is relative to
+/// the partition root ("" for the root).
+#[tauri::command]
+fn partition_list(rel: String) -> Result<Vec<DirEntry>, String> {
+    let root = partition::find().ok_or_else(|| "partition_not_mounted".to_string())?;
+    let entries = partition::list_dir(&root, &rel).map_err(|e| e.to_string())?;
+    Ok(entries
+        .into_iter()
+        .map(|e| DirEntry { name: e.name, is_dir: e.is_dir, size: e.size })
+        .collect())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             detect_connection,
             ping_watch,
-            app_version
+            app_version,
+            expose_partition,
+            partition_list
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

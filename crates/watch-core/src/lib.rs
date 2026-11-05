@@ -10,6 +10,7 @@
 
 pub mod appids;
 pub mod menu;
+pub mod partition;
 pub mod serial;
 
 /// Errors from the core logic.
@@ -23,6 +24,12 @@ pub enum Error {
 
     #[error("serial error: {0}")]
     Serial(String),
+
+    #[error("unsafe or invalid path: {0}")]
+    Path(String),
+
+    #[error("io error: {0}")]
+    Io(String),
 }
 
 /// The library version, for the About screen.

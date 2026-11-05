@@ -23,6 +23,15 @@ const I18N = {
     "ping.ok": "החיבור תקין. השעון השיב.",
     "ping.fail": "בדיקת החיבור נכשלה",
     "partition.title": "המחיצה המוסתרת",
+    "partition.intro": "המחיצה המוסתרת (/1:/) מכילה את קובצי המערכת של השעון. כאן אפשר לדפדף בה בקריאה בלבד, כתחליף פתוח לכלי המפעל הסגור.",
+    "partition.open": "פתח את המחיצה",
+    "partition.refresh": "רענן",
+    "partition.exposing": "חושף את המחיצה... נתק אל תנתק את השעון.",
+    "partition.need_charging": "כדי לפתוח את המחיצה, חבר את השעון במצב Charging mode.",
+    "partition.not_found": "המחיצה לא נמצאה. נסה לנתק ולחבר מחדש את השעון.",
+    "partition.readonly": "קריאה בלבד",
+    "partition.empty": "התיקייה ריקה.",
+    "partition.root": "שורש",
     "menu.title": "עריכת התפריט",
     "soon": "בבנייה. יתווסף בקרוב.",
     "footer.safe": "קריאה בלבד ומעברי-מצב בלבד. אין כתיבה או מחיקה לקושחה.",
@@ -48,6 +57,15 @@ const I18N = {
     "ping.ok": "Connection works. The watch replied.",
     "ping.fail": "Connection test failed",
     "partition.title": "Hidden partition",
+    "partition.intro": "The hidden partition (/1:/) holds the watch system files. Browse it here read-only, an open replacement for the vendor's closed tool.",
+    "partition.open": "Open the partition",
+    "partition.refresh": "Refresh",
+    "partition.exposing": "Exposing the partition... do not disconnect the watch.",
+    "partition.need_charging": "To open the partition, connect the watch in Charging mode.",
+    "partition.not_found": "Partition not found. Try reconnecting the watch.",
+    "partition.readonly": "Read-only",
+    "partition.empty": "The folder is empty.",
+    "partition.root": "root",
     "menu.title": "Menu editor",
     "soon": "Under construction. Coming soon.",
     "footer.safe": "Read-only and mode-change only. No firmware writes or erases.",
@@ -119,6 +137,98 @@ function setStatus(mode) {
   text.textContent = t("status." + mode);
   guide.textContent = t("guide." + mode);
   pingBtn.disabled = mode !== "charging";
+
+  // Enable feature tabs by mode: partition works in charging or mass; menu needs charging.
+  const partTab = document.querySelector('.nav-item[data-tab="partition"]');
+  const menuTab = document.querySelector('.nav-item[data-tab="menu"]');
+  if (partTab) partTab.disabled = !(mode === "charging" || mode === "mass");
+  if (menuTab) menuTab.disabled = mode !== "charging";
+}
+
+/* ---------- Partition browser ---------- */
+function formatSize(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+  return (n / 1048576).toFixed(1) + " MB";
+}
+
+const folderSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+const fileSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+
+let partPath = "";
+
+function renderCrumb() {
+  const crumb = document.getElementById("partCrumb");
+  crumb.innerHTML = "";
+  const parts = partPath.split("/").filter(Boolean);
+  const mk = (label, rel, current) => {
+    const b = document.createElement("button");
+    b.className = "crumb" + (current ? " current" : "");
+    b.textContent = label;
+    if (!current) b.addEventListener("click", () => partBrowse(rel));
+    return b;
+  };
+  crumb.appendChild(mk(t("partition.root"), "", parts.length === 0));
+  let acc = "";
+  parts.forEach((p, i) => {
+    acc = acc ? acc + "/" + p : p;
+    const sep = document.createElement("span");
+    sep.className = "crumb-sep";
+    sep.textContent = "›";
+    crumb.appendChild(sep);
+    crumb.appendChild(mk(p, acc, i === parts.length - 1));
+  });
+}
+
+async function partBrowse(rel) {
+  try {
+    const entries = await invoke("partition_list", { rel });
+    partPath = rel;
+    renderCrumb();
+    const list = document.getElementById("partList");
+    list.innerHTML = "";
+    if (entries.length === 0) {
+      const e = document.createElement("div");
+      e.className = "file-empty";
+      e.textContent = t("partition.empty");
+      list.appendChild(e);
+      return;
+    }
+    for (const ent of entries) {
+      const row = document.createElement("div");
+      row.className = "file-row" + (ent.is_dir ? " dir" : "");
+      row.innerHTML =
+        (ent.is_dir ? folderSvg : fileSvg) +
+        '<span class="file-name"></span>' +
+        '<span class="file-size"></span>';
+      row.querySelector(".file-name").textContent = ent.name;
+      row.querySelector(".file-size").textContent = ent.is_dir ? "" : formatSize(ent.size);
+      if (ent.is_dir) {
+        row.addEventListener("click", () => partBrowse(rel ? rel + "/" + ent.name : ent.name));
+      }
+      list.appendChild(row);
+    }
+  } catch (e) {
+    document.getElementById("partMsg").textContent = String(e);
+  }
+}
+
+async function exposePartition() {
+  const msg = document.getElementById("partMsg");
+  const browser = document.getElementById("partBrowser");
+  const refresh = document.getElementById("partRefresh");
+  msg.textContent = t("partition.exposing");
+  try {
+    await invoke("expose_partition");
+    msg.textContent = "";
+    browser.style.display = "block";
+    refresh.style.display = "inline-flex";
+    await partBrowse("");
+  } catch (e) {
+    const key = String(e).includes("charging") ? "partition.need_charging"
+      : String(e).includes("not_found") ? "partition.not_found" : null;
+    msg.textContent = key ? t(key) : String(e);
+  }
 }
 
 async function detect(fromUser) {
@@ -166,6 +276,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("detectBtn").addEventListener("click", () => detect(true));
   document.getElementById("pingBtn").addEventListener("click", ping);
+  document.getElementById("exposeBtn").addEventListener("click", exposePartition);
+  document.getElementById("partRefresh").addEventListener("click", () => partBrowse(partPath));
   document.querySelectorAll(".nav-item").forEach((b) => {
     b.addEventListener("click", () => { if (!b.disabled) switchTab(b.dataset.tab); });
   });
