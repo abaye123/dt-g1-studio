@@ -99,17 +99,20 @@ Observed and documented; confirm exact signatures against the `ai_context` refer
 ### 5.4 UI components
 `div`, `stack`, `scroll`, `text`/`p`, `image`, `button`, `input`, `slider`, `progress`, `list`, `picker`, `marquee`, `canvas`, `qrcode`, `barcode`. Template directives: `for`, `if`/`elif`, `on:click`, `:prop` bindings, `{{ }}` interpolation. Lifecycle: page `onInit -> onReady -> onShow -> onHide -> onDestroy`; app `onCreate/onShow/onHide/onDestroy/onError`.
 
-### 5.5 Hebrew note
-The watch's bundled fonts have no Hebrew glyphs. For Hebrew UI, either bundle a Hebrew font with the app (if the renderer loads app fonts) or render Hebrew text to an image at build time (what the `whose-watch` sample does, with Varela Round). The app builder should offer the image-text path as a reliable default and test font bundling separately.
+### 5.5 Hebrew
+Hebrew is a supported system language. The firmware's language list includes Hebrew (`m_he-il.hex`), and the system font is `harmony.ttf` (HarmonyOS Sans), which includes Hebrew glyphs. The watch UI itself shows Hebrew (the About screen does). The three app-level fonts in `/1:/gui/fonts` (AliPuHui, NotoSans, NotoNaskhArabic) have no Hebrew, but that is the app font set, not the system font.
+
+So live Hebrew text in an app is most likely available through the system font stack. Confirm first: build a tiny `.ux` app that prints a Hebrew string and see if it renders. If yes, the app builder uses live Hebrew text (correct, selectable, easy to edit). The pre-rendered image path (what the `whose-watch` sample did with Varela Round) stays only as a fallback for custom fonts or effects.
 
 ## 6. Roadmap
 
 - v1: connection wizard, hidden partition browser, menu editor. All read-mostly, proven operations.
-- v2: app builder (templates: image-screen app like whose-watch, and an audio player using `@system.media`), invoking the Glyphix CLI.
+- v2: feature parity with the WearPro app (what the companion app offers), reverse-engineered from the WearPro APK kept in `dt-g1-research/reverse-engineering/wearpro-apk/`. Likely items: editing watch-face backgrounds and dials, transferring images and photos, pushing music and maps. Each is reimplemented over the same USB/serial and partition access the tool already has.
+- v2 also: app builder (templates: image-screen app like whose-watch, and an audio player using `@system.media`), invoking the Glyphix CLI, with live Hebrew text once confirmed.
 - v3: advanced ADFU dump on Linux.
 
 ## 7. Open questions
 
-- Does the Glyphix renderer load a font bundled inside an app package? If yes, Hebrew text can be live instead of pre-rendered.
+- Does an app render with the system font (`harmony.ttf`, which has Hebrew) by default? If yes, Hebrew text is live with no extra work. If an app is limited to the `gui/fonts` set, can an app bundle its own Hebrew font? Test both.
 - Exact `@system.media` playback to Bluetooth headphones vs the on-wrist speaker: confirm before promising a headphone audio player.
 - Whether `pkgs.db` and the menu slot approach is stable across firmware updates.
