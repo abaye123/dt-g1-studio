@@ -315,6 +315,21 @@ main {
 
 .coming { color: var(--muted); }
 
+.info-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 18px;
+  padding: 11px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.info-note svg { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--accent); }
+
 /* ---------- File browser ---------- */
 .browser {
   margin-top: 18px;

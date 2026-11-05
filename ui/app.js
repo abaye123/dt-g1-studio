@@ -29,6 +29,8 @@ const I18N = {
     "partition.title": "המחיצה המוסתרת",
     "partition.intro": "המחיצה המוסתרת (/1:/) מכילה את קובצי המערכת של השעון. כאן אפשר לדפדף בה בקריאה בלבד, כתחליף פתוח לכלי המפעל הסגור.",
     "partition.open": "פתח את המחיצה",
+    "partition.explorer": "פתח בסייר הקבצים",
+    "partition.drive_note": "פתיחת המחיצה מרכיבה אותה גם ככונן חדש ב-Windows (למשל E:), שאפשר לפתוח ישירות בסייר הקבצים. הכלי מציג כאן תצוגה בטוחה בקריאה בלבד.",
     "partition.refresh": "רענן",
     "partition.exposing": "חושף את המחיצה... נתק אל תנתק את השעון.",
     "partition.need_charging": "כדי לפתוח את המחיצה, חבר את השעון במצב Charging mode.",
@@ -78,6 +80,8 @@ const I18N = {
     "partition.title": "Hidden partition",
     "partition.intro": "The hidden partition (/1:/) holds the watch system files. Browse it here read-only, an open replacement for the vendor's closed tool.",
     "partition.open": "Open the partition",
+    "partition.explorer": "Open in File Explorer",
+    "partition.drive_note": "Opening the partition also mounts it as a new drive in Windows (for example E:), which you can open directly in File Explorer. The tool shows a safe read-only view here.",
     "partition.refresh": "Refresh",
     "partition.exposing": "Exposing the partition... do not disconnect the watch.",
     "partition.need_charging": "To open the partition, connect the watch in Charging mode.",
@@ -270,6 +274,7 @@ async function exposePartition() {
     msg.textContent = "";
     browser.style.display = "block";
     refresh.style.display = "inline-flex";
+    document.getElementById("partExplorer").style.display = "inline-flex";
     await partBrowse("");
   } catch (e) {
     const key = String(e).includes("charging") ? "partition.need_charging"
@@ -425,6 +430,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("pingBtn").addEventListener("click", ping);
   document.getElementById("exposeBtn").addEventListener("click", exposePartition);
   document.getElementById("partRefresh").addEventListener("click", () => partBrowse(partPath));
+  document.getElementById("partExplorer").addEventListener("click", async () => {
+    try { await invoke("reveal_in_explorer", { rel: partPath }); }
+    catch (e) { document.getElementById("partMsg").textContent = String(e); }
+  });
   document.getElementById("menuLoad").addEventListener("click", loadMenu);
   document.getElementById("menuSave").addEventListener("click", saveMenu);
   document.querySelectorAll(".nav-item").forEach((b) => {

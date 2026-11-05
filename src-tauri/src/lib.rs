@@ -308,6 +308,30 @@ fn menu_save(
     Ok(backup.to_string_lossy().into_owned())
 }
 
+/// Open the current partition folder in Windows File Explorer. `rel` is the
+/// path relative to the partition root ("" for the root / drive).
+#[tauri::command]
+fn reveal_in_explorer(state: State<'_, Demo>, rel: String) -> Result<(), String> {
+    let root = demo_root(&state)
+        .or_else(partition::find)
+        .ok_or_else(|| "partition_not_mounted".to_string())?;
+    let mut p = root;
+    for part in rel.split(['/', '\\']) {
+        if part.is_empty() || part == "." {
+            continue;
+        }
+        if part == ".." || part.contains(':') {
+            return Err("bad_path".into());
+        }
+        p.push(part);
+    }
+    std::process::Command::new("explorer")
+        .arg(&p)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(Demo::default())
@@ -320,7 +344,8 @@ pub fn run() {
             menu_load,
             menu_save,
             enable_demo,
-            disable_demo
+            disable_demo,
+            reveal_in_explorer
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
