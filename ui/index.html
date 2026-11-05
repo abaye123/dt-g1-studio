@@ -37,6 +37,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
         <span data-i18n="tab.menu"></span>
       </button>
+      <button class="nav-item" data-tab="background" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        <span data-i18n="tab.background"></span>
+      </button>
       <div class="nav-sep"></div>
       <div class="nav-hint" data-i18n="nav.hint"></div>
     </aside>
@@ -125,6 +129,42 @@
         <div id="menuRestart" class="safe-note" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
           <span data-i18n="menu.restart"></span>
+        </div>
+      </section>
+
+      <section id="tab-background" class="panel">
+        <h1 data-i18n="bg.title"></h1>
+        <p class="lead" data-i18n="bg.intro"></p>
+
+        <div class="bg-editor">
+          <div class="bg-preview">
+            <div class="bg-frame" id="bgFrame">
+              <img id="bgImg" alt="" />
+              <span class="bg-placeholder" id="bgPlaceholder" data-i18n="bg.pick_hint"></span>
+            </div>
+          </div>
+          <div class="bg-controls">
+            <label class="btn primary" for="bgInput">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5-5 5 5M12 5v12"/></svg>
+              <span data-i18n="bg.pick"></span>
+            </label>
+            <input id="bgInput" type="file" accept="image/*" hidden />
+
+            <div class="bg-fit" id="bgFit">
+              <button class="chip active" data-fit="cover" type="button" data-i18n="bg.cover"></button>
+              <button class="chip" data-fit="contain" type="button" data-i18n="bg.contain"></button>
+            </div>
+
+            <button id="bgApply" class="btn" type="button" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              <span data-i18n="bg.apply"></span>
+            </button>
+          </div>
+        </div>
+        <p id="bgMsg" class="coming"></p>
+        <div id="bgDone" class="safe-note" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+          <span data-i18n="bg.done"></span>
         </div>
       </section>
     </main>

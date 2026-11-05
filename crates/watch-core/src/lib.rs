@@ -9,6 +9,7 @@
 //! command.
 
 pub mod appids;
+pub mod background;
 pub mod menu;
 pub mod partition;
 pub mod serial;

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, State};
 use watch_core::menu::{Menu, Slot};
@@ -308,6 +309,59 @@ fn menu_save(
     Ok(backup.to_string_lossy().into_owned())
 }
 
+/// Render an input image to a 466x466 JPEG. `fit` is "cover" (crop to fill) or
+/// "contain" (fit inside, pad with black).
+fn render_square(input: &[u8], fit: &str) -> Result<Vec<u8>, String> {
+    use image::imageops::FilterType;
+    let side = watch_core::background::SIDE;
+    let img = image::load_from_memory(input).map_err(|e| e.to_string())?;
+    let out = if fit == "contain" {
+        let resized = img.resize(side, side, FilterType::Lanczos3);
+        let mut canvas = image::RgbImage::from_pixel(side, side, image::Rgb([0, 0, 0]));
+        let x = ((side - resized.width()) / 2) as i64;
+        let y = ((side - resized.height()) / 2) as i64;
+        image::imageops::overlay(&mut canvas, &resized.to_rgb8(), x, y);
+        canvas
+    } else {
+        img.resize_to_fill(side, side, FilterType::Lanczos3).to_rgb8()
+    };
+    let mut buf = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, 90)
+        .encode(out.as_raw(), side, side, image::ExtendedColorType::Rgb8)
+        .map_err(|e| e.to_string())?;
+    Ok(buf)
+}
+
+/// Render a preview of a background and return it as a base64 JPEG (data for an
+/// <img> tag). Does not touch the watch.
+#[tauri::command]
+fn preview_background(image_b64: String, fit: String) -> Result<String, String> {
+    let input = base64::engine::general_purpose::STANDARD
+        .decode(image_b64)
+        .map_err(|e| e.to_string())?;
+    let jpeg = render_square(&input, &fit)?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(jpeg))
+}
+
+/// Write a custom clock background to the watch (res/user_clock_bg.bin and the
+/// thumbnail). The partition must be mounted (or demo mode). Returns nothing.
+#[tauri::command]
+fn apply_background(state: State<'_, Demo>, image_b64: String, fit: String) -> Result<(), String> {
+    let root = demo_root(&state)
+        .or_else(partition::find)
+        .ok_or_else(|| "partition_not_mounted".to_string())?;
+    let input = base64::engine::general_purpose::STANDARD
+        .decode(image_b64)
+        .map_err(|e| e.to_string())?;
+    let jpeg = render_square(&input, &fit)?;
+    let file = watch_core::background::wrap_jpeg(&jpeg);
+    let res_dir = root.join("res");
+    std::fs::create_dir_all(&res_dir).map_err(|e| e.to_string())?;
+    std::fs::write(res_dir.join("user_clock_bg.bin"), &file).map_err(|e| e.to_string())?;
+    std::fs::write(res_dir.join("user_clock_thumb.bin"), &file).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Open the current partition folder in Windows File Explorer. `rel` is the
 /// path relative to the partition root ("" for the root / drive).
 #[tauri::command]
@@ -345,7 +399,9 @@ pub fn run() {
             menu_save,
             enable_demo,
             disable_demo,
-            reveal_in_explorer
+            reveal_in_explorer,
+            preview_background,
+            apply_background
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

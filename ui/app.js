@@ -50,6 +50,17 @@ const I18N = {
     "menu.restart": "נתק והפעל מחדש את השעון כדי להחיל את השינויים.",
     "menu.visible": "מוצג",
     "menu.hidden": "מוסתר",
+    "tab.background": "רקע שעון",
+    "bg.title": "רקע מותאם",
+    "bg.intro": "בחר תמונה, קבע כיצד היא ממלאת את המסך העגול, וראה תצוגה מקדימה. 'החל' כותב את הרקע לשעון (res/user_clock_bg.bin).",
+    "bg.pick": "בחר תמונה",
+    "bg.pick_hint": "לא נבחרה תמונה",
+    "bg.cover": "מילוי",
+    "bg.contain": "התאמה",
+    "bg.apply": "החל לשעון",
+    "bg.applying": "כותב את הרקע...",
+    "bg.done": "הרקע נכתב. בשעון, בחר את חזית התמונה המותאמת, והפעל מחדש אם צריך.",
+    "bg.need": "כדי להחיל, חבר את השעון במצב מתאים (או הפעל מצב הדגמה).",
     "soon": "בבנייה. יתווסף בקרוב.",
     "footer.safe": "קריאה בלבד ומעברי-מצב בלבד. אין כתיבה או מחיקה לקושחה.",
   },
@@ -101,6 +112,17 @@ const I18N = {
     "menu.restart": "Disconnect and restart the watch to apply the changes.",
     "menu.visible": "Shown",
     "menu.hidden": "Hidden",
+    "tab.background": "Watch face",
+    "bg.title": "Custom background",
+    "bg.intro": "Pick an image, choose how it fills the round screen, and preview it. Apply writes the background to the watch (res/user_clock_bg.bin).",
+    "bg.pick": "Choose image",
+    "bg.pick_hint": "No image selected",
+    "bg.cover": "Fill",
+    "bg.contain": "Fit",
+    "bg.apply": "Apply to watch",
+    "bg.applying": "Writing the background...",
+    "bg.done": "Background written. On the watch, select the custom photo face, and restart if needed.",
+    "bg.need": "To apply, connect the watch (or turn on demo mode).",
     "soon": "Under construction. Coming soon.",
     "footer.safe": "Read-only and mode-change only. No firmware writes or erases.",
   },
@@ -177,6 +199,47 @@ function setStatus(mode) {
   const menuTab = document.querySelector('.nav-item[data-tab="menu"]');
   if (partTab) partTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
   if (menuTab) menuTab.disabled = !(mode === "charging" || mode === "demo");
+  const bgTab = document.querySelector('.nav-item[data-tab="background"]');
+  if (bgTab) bgTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
+}
+
+/* ---------- Background editor ---------- */
+let bgB64 = null;
+let bgFit = "cover";
+
+function fileToB64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(",")[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function bgPreview() {
+  if (!bgB64) return;
+  try {
+    const jpeg = await invoke("preview_background", { imageB64: bgB64, fit: bgFit });
+    document.getElementById("bgImg").src = "data:image/jpeg;base64," + jpeg;
+    document.getElementById("bgFrame").classList.add("has-img");
+    document.getElementById("bgApply").disabled = false;
+    document.getElementById("bgDone").style.display = "none";
+  } catch (e) {
+    document.getElementById("bgMsg").textContent = String(e);
+  }
+}
+
+async function bgApply() {
+  if (!bgB64) return;
+  const msg = document.getElementById("bgMsg");
+  msg.textContent = t("bg.applying");
+  try {
+    await invoke("apply_background", { imageB64: bgB64, fit: bgFit });
+    msg.textContent = "";
+    document.getElementById("bgDone").style.display = "flex";
+  } catch (e) {
+    msg.textContent = String(e).includes("not_mounted") ? t("bg.need") : String(e);
+  }
 }
 
 /* ---------- Demo mode ---------- */
@@ -436,6 +499,20 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("menuLoad").addEventListener("click", loadMenu);
   document.getElementById("menuSave").addEventListener("click", saveMenu);
+  document.getElementById("bgInput").addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    bgB64 = await fileToB64(file);
+    await bgPreview();
+  });
+  document.querySelectorAll("#bgFit .chip").forEach((c) => {
+    c.addEventListener("click", () => {
+      document.querySelectorAll("#bgFit .chip").forEach((x) => x.classList.toggle("active", x === c));
+      bgFit = c.dataset.fit;
+      bgPreview();
+    });
+  });
+  document.getElementById("bgApply").addEventListener("click", bgApply);
   document.querySelectorAll(".nav-item").forEach((b) => {
     b.addEventListener("click", () => { if (!b.disabled) switchTab(b.dataset.tab); });
   });
