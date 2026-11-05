@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DT G1 Studio</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">G1</span>
+        <span class="brand-name">DT G1 Studio</span>
+      </div>
+      <button id="langToggle" class="lang-toggle" type="button">EN</button>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="connect" type="button"></button>
+      <button class="tab" data-tab="partition" type="button" disabled></button>
+      <button class="tab" data-tab="menu" type="button" disabled></button>
+    </nav>
+
+    <main>
+      <section id="tab-connect" class="panel active">
+        <h1 data-i18n="connect.title"></h1>
+        <p class="muted" data-i18n="connect.intro"></p>
+
+        <div class="status-card">
+          <div class="status-row">
+            <span class="dot" id="statusDot"></span>
+            <span id="statusText" data-i18n="connect.unknown"></span>
+          </div>
+          <p class="guide" id="guideText"></p>
+        </div>
+
+        <div class="actions">
+          <button id="detectBtn" class="btn primary" type="button" data-i18n="connect.detect"></button>
+          <button id="pingBtn" class="btn" type="button" data-i18n="connect.test" disabled></button>
+        </div>
+
+        <pre id="log" class="log" aria-live="polite"></pre>
+      </section>
+
+      <section id="tab-partition" class="panel">
+        <h1 data-i18n="partition.title"></h1>
+        <p class="muted" data-i18n="soon"></p>
+      </section>
+
+      <section id="tab-menu" class="panel">
+        <h1 data-i18n="menu.title"></h1>
+        <p class="muted" data-i18n="soon"></p>
+      </section>
+    </main>
+
+    <footer class="statusbar">
+      <span data-i18n="footer.safe"></span>
+      <span id="version" class="muted"></span>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
