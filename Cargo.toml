@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/watch-core"]
+
+# The Tauri app crate (src-tauri) is added in a later step and will be listed here.
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["abaye"]
+
+[profile.release]
+strip = true
+lto = true
