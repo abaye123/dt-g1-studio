@@ -232,6 +232,54 @@ input[type="color"] {
 .map-del svg { width: 16px; height: 16px; }
 .map-empty { padding: 20px 14px; color: var(--muted); }
 
+h2.sub { font-size: 17px; font-weight: 600; margin: 28px 0 4px; }
+.map-search { display: flex; gap: 8px; margin: 14px 0 10px; }
+.map-search input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+}
+.map-search input:focus { outline: none; border-color: var(--accent); }
+.leaf-map {
+  height: 320px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  z-index: 0;
+}
+.leaf-map .leaflet-control-attribution { font-size: 10px; }
+.map-form { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+.map-form input {
+  flex: 1;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+}
+.map-form input:focus { outline: none; border-color: var(--accent); }
+.select {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+#compileResult { align-items: center; }
+#compileResult span { flex: 1; }
+
 /* ---------- Demo banner ---------- */
 .demo-banner {
   display: flex;

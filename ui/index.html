@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DT G1 Studio</title>
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -209,13 +210,46 @@
         </div>
         <p id="mapsMsg" class="coming"></p>
         <div id="mapsList" class="map-list"></div>
-        <div class="info-note">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-          <span data-i18n="maps.osm_note"></span>
+
+        <h2 class="sub" data-i18n="maps.compile_title"></h2>
+        <p class="lead" data-i18n="maps.compile_intro"></p>
+
+        <div id="mapsSetup" class="info-note" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5-5 5 5M12 5v12"/></svg>
+          <span data-i18n="maps.setup_note"></span>
+          <button id="mapsSetupBtn" class="btn" type="button" data-i18n="maps.setup"></button>
+        </div>
+
+        <div id="mapsCompiler" style="display:none">
+          <div class="map-search">
+            <input id="geoInput" type="text" placeholder="" />
+            <button id="geoBtn" class="btn" type="button" data-i18n="maps.search"></button>
+          </div>
+          <div id="leafMap" class="leaf-map"></div>
+          <p class="bg-hint"><span data-i18n="maps.area_hint"></span> <span id="areaSize"></span></p>
+          <div class="map-form">
+            <input id="mapName" type="text" placeholder="" />
+            <select id="poiMode" class="select">
+              <option value="landuse" data-i18n="maps.poi_landuse"></option>
+              <option value="native" data-i18n="maps.poi_native"></option>
+              <option value="none" data-i18n="maps.poi_none"></option>
+            </select>
+            <button id="compileBtn" class="btn primary" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6M12 22v-6M2 12h6M22 12h-6M5 5l4 4M19 19l-4-4M19 5l-4 4M5 19l4-4"/></svg>
+              <span data-i18n="maps.compile"></span>
+            </button>
+          </div>
+          <p id="compileMsg" class="coming"></p>
+          <div id="compileResult" class="info-note" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            <span id="compileResultText"></span>
+            <button id="installBtn" class="btn primary" type="button" data-i18n="maps.install"></button>
+          </div>
         </div>
       </section>
     </main>
 
+    <script src="vendor/leaflet/leaflet.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

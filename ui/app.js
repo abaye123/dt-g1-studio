@@ -73,6 +73,23 @@ const I18N = {
     "maps.empty": "אין מפות מותקנות. פתח את תיקיית המפות כדי להוסיף.",
     "maps.need": "חבר את השעון (או הפעל מצב הדגמה) כדי לראות מפות.",
     "maps.confirm_del": "להסיר את המפה",
+    "maps.compile_title": "צור מפת OSM חדשה",
+    "maps.compile_intro": "חפש אזור, מקם אותו על המפה, והתוכנה תוריד את נתוני OpenStreetMap ותקמפל אותם לפורמט השעון.",
+    "maps.setup_note": "קימפול דורש הורדה חד-פעמית של כלי הקימפול הרשמי (כ-13MB).",
+    "maps.setup": "הורד את כלי הקימפול",
+    "maps.setting_up": "מוריד את כלי הקימפול (כ-13MB)...",
+    "maps.search": "חפש",
+    "maps.area_hint": "האזור המוצג על המפה הוא מה שיורד.",
+    "maps.poi_landuse": "נקודות עניין: מוטמעות (מומלץ)",
+    "maps.poi_native": "נקודות עניין: שכבה נפרדת",
+    "maps.poi_none": "בלי נקודות עניין",
+    "maps.compile": "הורד וקמפל",
+    "maps.install": "התקן בשעון",
+    "maps.downloading": "מוריד נתוני OSM...",
+    "maps.compiling": "מקמפל את המפה...",
+    "maps.installed": "המפה הותקנה בשעון.",
+    "maps.area_big": "האזור גדול - אם הקימפול נכשל, הקטן את התצוגה (זום פנימה).",
+    "maps.need_name": "הזן שם למפה.",
     "soon": "בבנייה. יתווסף בקרוב.",
     "footer.safe": "קריאה בלבד ומעברי-מצב בלבד. אין כתיבה או מחיקה לקושחה.",
   },
@@ -147,6 +164,23 @@ const I18N = {
     "maps.empty": "No maps installed. Open the maps folder to add some.",
     "maps.need": "Connect the watch (or turn on demo mode) to see maps.",
     "maps.confirm_del": "Remove the map",
+    "maps.compile_title": "Create a new OSM map",
+    "maps.compile_intro": "Search for an area, position it on the map, and the tool downloads OpenStreetMap data and compiles it to the watch format.",
+    "maps.setup_note": "Compiling needs a one-time download of the official compiler (about 13 MB).",
+    "maps.setup": "Download the compiler",
+    "maps.setting_up": "Downloading the compiler (about 13 MB)...",
+    "maps.search": "Search",
+    "maps.area_hint": "The area shown on the map is what gets downloaded.",
+    "maps.poi_landuse": "Points of interest: baked in (recommended)",
+    "maps.poi_native": "Points of interest: separate layer",
+    "maps.poi_none": "No points of interest",
+    "maps.compile": "Download and compile",
+    "maps.install": "Install to watch",
+    "maps.downloading": "Downloading OSM data...",
+    "maps.compiling": "Compiling the map...",
+    "maps.installed": "Map installed on the watch.",
+    "maps.area_big": "Large area - if compiling fails, zoom in to a smaller area.",
+    "maps.need_name": "Enter a map name.",
     "soon": "Under construction. Coming soon.",
     "footer.safe": "Read-only and mode-change only. No firmware writes or erases.",
   },
@@ -278,6 +312,127 @@ async function revealMaps() {
   } catch (e) {
     document.getElementById("mapsMsg").textContent =
       String(e).includes("not_mounted") ? t("maps.need") : String(e);
+  }
+}
+
+/* ---------- OSM map compiler ---------- */
+let leaflet = null;
+let compiledName = null;
+
+function fmtSize(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1048576) return (n / 1024).toFixed(0) + " KB";
+  return (n / 1048576).toFixed(1) + " MB";
+}
+
+function initMap() {
+  if (leaflet || typeof L === "undefined") return;
+  leaflet = L.map("leafMap", { zoomControl: true }).setView([32.08, 34.78], 13);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "© OpenStreetMap",
+  }).addTo(leaflet);
+  leaflet.on("moveend", updateArea);
+  updateArea();
+}
+
+function updateArea() {
+  if (!leaflet) return;
+  const b = leaflet.getBounds();
+  const latMid = (b.getNorth() + b.getSouth()) / 2;
+  const w = (b.getEast() - b.getWest()) * 111.32 * Math.cos((latMid * Math.PI) / 180);
+  const h = (b.getNorth() - b.getSouth()) * 111.32;
+  const km2 = Math.abs(w * h);
+  const el = document.getElementById("areaSize");
+  el.textContent = "~" + (km2 < 10 ? km2.toFixed(1) : Math.round(km2)) + " km²";
+  document.getElementById("compileMsg").textContent = km2 > 400 ? t("maps.area_big") : "";
+}
+
+async function geocode() {
+  const q = document.getElementById("geoInput").value.trim();
+  if (!q || !leaflet) return;
+  try {
+    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=" + encodeURIComponent(q);
+    const res = await fetch(url, { headers: { "Accept-Language": lang } });
+    const arr = await res.json();
+    if (arr.length === 0) return;
+    const r = arr[0];
+    const bb = r.boundingbox.map(Number); // [south, north, west, east]
+    leaflet.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]]);
+    const nm = (r.display_name || q).split(",")[0].trim();
+    if (!document.getElementById("mapName").value) document.getElementById("mapName").value = nm;
+  } catch (e) {
+    document.getElementById("compileMsg").textContent = String(e);
+  }
+}
+
+async function checkCompiler() {
+  try {
+    const ready = await invoke("map_compiler_ready");
+    document.getElementById("mapsSetup").style.display = ready ? "none" : "flex";
+    document.getElementById("mapsCompiler").style.display = ready ? "block" : "none";
+    if (ready && leaflet) setTimeout(() => leaflet.invalidateSize(), 50);
+  } catch (e) { /* ignore */ }
+}
+
+async function setupCompiler() {
+  const msg = document.getElementById("mapsMsg");
+  msg.textContent = t("maps.setting_up");
+  document.getElementById("mapsSetupBtn").disabled = true;
+  try {
+    await invoke("map_compiler_setup");
+    msg.textContent = "";
+    await checkCompiler();
+    initMap();
+    setTimeout(() => leaflet && leaflet.invalidateSize(), 60);
+  } catch (e) {
+    msg.textContent = String(e);
+  } finally {
+    document.getElementById("mapsSetupBtn").disabled = false;
+  }
+}
+
+async function compileMap() {
+  const name = document.getElementById("mapName").value.trim();
+  const msg = document.getElementById("compileMsg");
+  if (!name) { msg.textContent = t("maps.need_name"); return; }
+  if (!leaflet) return;
+  const b = leaflet.getBounds();
+  const poi = document.getElementById("poiMode").value;
+  document.getElementById("compileResult").style.display = "none";
+  document.getElementById("compileBtn").disabled = true;
+  msg.textContent = t("maps.downloading");
+  try {
+    const r = await invoke("compile_region", {
+      west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth(),
+      name, poiMode: poi,
+    });
+    compiledName = name;
+    msg.textContent = "";
+    document.getElementById("compileResultText").textContent =
+      "OSM: " + fmtSize(r.osm_bytes) + "  ·  " + t("maps.title") + ": " + fmtSize(r.total);
+    document.getElementById("compileResult").style.display = "flex";
+  } catch (e) {
+    const s = String(e);
+    msg.textContent = s.includes("area_too_large") ? t("maps.area_big")
+      : s.includes("compiler_not_ready") ? t("maps.setup_note")
+      : s.includes("osm_download_failed") ? "OSM download failed - try again or a smaller area."
+      : s;
+  } finally {
+    document.getElementById("compileBtn").disabled = false;
+  }
+}
+
+async function installCompiled() {
+  if (!compiledName) return;
+  const msg = document.getElementById("compileMsg");
+  try {
+    await invoke("install_compiled_map", { name: compiledName });
+    msg.textContent = t("maps.installed");
+    document.getElementById("compileResult").style.display = "none";
+    await loadMaps();
+  } catch (e) {
+    msg.textContent = String(e).includes("not_mounted") ? t("maps.need") : String(e);
   }
 }
 
@@ -547,7 +702,12 @@ async function ping() {
 function switchTab(name) {
   document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
-  if (name === "maps") loadMaps();
+  if (name === "maps") {
+    loadMaps();
+    initMap();
+    checkCompiler();
+    setTimeout(() => leaflet && leaflet.invalidateSize(), 80);
+  }
 }
 
 /* ---------- Menu editor ---------- */
@@ -689,6 +849,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   bgSetupPan();
   document.getElementById("mapsOpen").addEventListener("click", revealMaps);
   document.getElementById("mapsRefresh").addEventListener("click", loadMaps);
+  document.getElementById("mapsSetupBtn").addEventListener("click", setupCompiler);
+  document.getElementById("geoBtn").addEventListener("click", geocode);
+  document.getElementById("geoInput").addEventListener("keydown", (e) => { if (e.key === "Enter") geocode(); });
+  document.getElementById("compileBtn").addEventListener("click", compileMap);
+  document.getElementById("installBtn").addEventListener("click", installCompiled);
   document.querySelectorAll(".nav-item").forEach((b) => {
     b.addEventListener("click", () => { if (!b.disabled) switchTab(b.dataset.tab); });
   });
