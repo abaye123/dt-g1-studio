@@ -102,7 +102,7 @@ Observed and documented; confirm exact signatures against the `ai_context` refer
 ### 5.5 Hebrew
 Hebrew is a supported system language. The firmware's language list includes Hebrew (`m_he-il.hex`), and the system font is `harmony.ttf` (HarmonyOS Sans), which includes Hebrew glyphs. The watch UI itself shows Hebrew (the About screen does). The three app-level fonts in `/1:/gui/fonts` (AliPuHui, NotoSans, NotoNaskhArabic) have no Hebrew, but that is the app font set, not the system font.
 
-So live Hebrew text in an app is most likely available through the system font stack. Confirm first: build a tiny `.ux` app that prints a Hebrew string and see if it renders. If yes, the app builder uses live Hebrew text (correct, selectable, easy to edit). The pre-rendered image path (what the `whose-watch` sample did with Varela Round) stays only as a fallback for custom fonts or effects.
+CONFIRMED (2026-11-05): a test app (`dt-g1-research/apps/hebrew-test`) that prints live Hebrew `<text>` with no bundled font and no image rendered correctly on the watch - crisp Hebrew letters, right-to-left order, no missing glyphs. So the app renderer uses the system font (which has Hebrew). The app builder uses live Hebrew text (correct, selectable, easy to edit); the pre-rendered image path (what the `whose-watch` sample did with Varela Round) stays only as a fallback for custom fonts or effects. Note: the `.ux` `direction: rtl` style is ignored by the compiler, but Hebrew is strong-RTL so the renderer orders it correctly on its own; use `text-align` for alignment.
 
 ## 6. Roadmap
 
@@ -113,6 +113,6 @@ So live Hebrew text in an app is most likely available through the system font s
 
 ## 7. Open questions
 
-- Does an app render with the system font (`harmony.ttf`, which has Hebrew) by default? If yes, Hebrew text is live with no extra work. If an app is limited to the `gui/fonts` set, can an app bundle its own Hebrew font? Test both.
+- ~~Does an app render Hebrew with the system font?~~ RESOLVED: yes. Live Hebrew text renders correctly with no bundled font (tested 2026-11-05).
 - Exact `@system.media` playback to Bluetooth headphones vs the on-wrist speaker: confirm before promising a headphone audio player.
 - Whether `pkgs.db` and the menu slot approach is stable across firmware updates.
