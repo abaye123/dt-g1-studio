@@ -33,6 +33,15 @@ pub fn resources_root(app: &tauri::AppHandle) -> PathBuf {
             return p;
         }
     }
+    // Portable layout: resources sit next to the executable.
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let p = dir.join("resources");
+            if p.is_dir() {
+                return p;
+            }
+        }
+    }
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources")
 }
 
@@ -58,7 +67,7 @@ pub fn bundled_version(app: &tauri::AppHandle, key: &str) -> Option<String> {
 }
 
 fn tools_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
-    app.path().app_data_dir().ok().map(|d| d.join("tools"))
+    Some(crate::data_root(app).join("tools"))
 }
 
 fn version_file(dir: &Path) -> PathBuf {

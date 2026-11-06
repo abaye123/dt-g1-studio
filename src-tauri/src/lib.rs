@@ -106,11 +106,7 @@ fn enable_demo(
     let root = match path {
         Some(p) if !p.trim().is_empty() => PathBuf::from(p),
         _ => {
-            let root = app
-                .path()
-                .app_data_dir()
-                .map_err(|e| e.to_string())?
-                .join("demo-partition");
+            let root = data_root(&app).join("demo-partition");
             build_sample(&root).map_err(|e| e.to_string())?;
             root
         }
@@ -315,11 +311,7 @@ fn menu_save(
     let out = built.to_bytes();
 
     // Back up the current file before overwriting.
-    let backup_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("menu-backups");
+    let backup_dir = data_root(&app).join("menu-backups");
     std::fs::create_dir_all(&backup_dir).map_err(|e| e.to_string())?;
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -536,9 +528,32 @@ struct CompileResult {
     files: Vec<FileSize>,
 }
 
+/// The portable data dir for a given executable directory, if a `portable.txt`
+/// or `.portable` marker sits beside the program. Pure for testing.
+fn portable_data_dir(exe_dir: &Path) -> Option<PathBuf> {
+    if exe_dir.join("portable.txt").exists() || exe_dir.join(".portable").exists() {
+        Some(exe_dir.join("data"))
+    } else {
+        None
+    }
+}
+
+/// The writable data root. In portable mode (a `portable.txt` or `.portable`
+/// marker next to the executable) this is `<exe_dir>/data`, so the program keeps
+/// its data beside itself; otherwise the OS app-data directory.
+pub(crate) fn data_root(app: &tauri::AppHandle) -> PathBuf {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            if let Some(d) = portable_data_dir(dir) {
+                return d;
+            }
+        }
+    }
+    app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
 fn app_dir(app: &tauri::AppHandle, sub: &str) -> Result<PathBuf, String> {
-    let d = app.path().app_data_dir().map_err(|e| e.to_string())?.join(sub);
-    Ok(d)
+    Ok(data_root(app).join(sub))
 }
 
 /// Is the OSM map compiler available (bundled or staged)? Always true on
@@ -759,7 +774,7 @@ fn resolve_root(state: &State<'_, Demo>) -> Result<PathBuf, String> {
 
 /// Copy a file into the app-data `app-backups` folder before it is overwritten.
 fn backup_file(app: &tauri::AppHandle, src: &Path, label: &str) -> Option<String> {
-    let dir = app.path().app_data_dir().ok()?.join("app-backups");
+    let dir = data_root(app).join("app-backups");
     std::fs::create_dir_all(&dir).ok()?;
     let ts = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let name = src.file_name()?.to_string_lossy().into_owned();
@@ -976,4 +991,31 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn portable_marker_routes_data_beside_exe() {
+        let dir = std::env::temp_dir().join(format!("dtg1_portable_test_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // No marker: not portable.
+        let _ = std::fs::remove_file(dir.join("portable.txt"));
+        let _ = std::fs::remove_file(dir.join(".portable"));
+        assert_eq!(portable_data_dir(&dir), None);
+
+        // With a marker: data goes to <dir>/data.
+        std::fs::write(dir.join("portable.txt"), b"x").unwrap();
+        assert_eq!(portable_data_dir(&dir), Some(dir.join("data")));
+
+        // The dotfile variant works too.
+        std::fs::remove_file(dir.join("portable.txt")).unwrap();
+        std::fs::write(dir.join(".portable"), b"").unwrap();
+        assert_eq!(portable_data_dir(&dir), Some(dir.join("data")));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }

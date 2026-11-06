@@ -42,7 +42,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf zip
 
       - name: Assemble bundled tools
         run: ${{ matrix.vendor }}
@@ -58,3 +58,17 @@ jobs:
           releaseDraft: true
           prerelease: true
           args: ${{ matrix.args }}
+
+      - name: Package portable (Windows)
+        if: runner.os == 'Windows'
+        run: pwsh scripts/portable.ps1
+
+      - name: Package portable (Linux)
+        if: runner.os == 'Linux'
+        run: bash scripts/portable.sh
+
+      - name: Upload portable zip to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: gh release upload "${{ github.ref_name }}" DT-G1-Studio-*-portable-*.zip --clobber
