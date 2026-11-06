@@ -28,3 +28,6 @@ Thumbs.db
 desktop.ini
 .idea/
 .vscode/
+
+# === Packaged artifacts ===
+DT-G1-Studio-*.zip

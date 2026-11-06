@@ -28,6 +28,7 @@ Set-Content -Encoding utf8 -Path (Join-Path $app "README.txt") `
 
 $out = Join-Path $root ("DT-G1-Studio-$ver-portable-win-x64.zip")
 if (Test-Path $out) { Remove-Item -Force $out }
-Compress-Archive -Path (Join-Path $app "*") -DestinationPath $out
+# Zip the folder itself so it extracts into a DT-G1-Studio\ directory.
+Compress-Archive -Path $app -DestinationPath $out
 Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
 Write-Host "portable -> $out" -ForegroundColor Green
