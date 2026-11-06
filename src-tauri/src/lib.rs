@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+mod appbuild;
 mod mapcompile;
+mod pkgsdb;
 
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
@@ -616,6 +618,325 @@ fn install_compiled_map(
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// App builder + launcher
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+struct FieldInfo {
+    key: String,
+    kind: String,
+    he: String,
+    en: String,
+}
+
+#[derive(Serialize)]
+struct TemplateInfo {
+    id: String,
+    he: String,
+    en: String,
+    desc_he: String,
+    desc_en: String,
+    fields: Vec<FieldInfo>,
+}
+
+#[derive(Serialize)]
+struct SlotTarget {
+    app_id: u32,
+    hex: String,
+    package_id: String,
+    label: String,
+}
+
+#[derive(Serialize)]
+struct GxStatus {
+    ready: bool,
+    path: String,
+}
+
+#[derive(Serialize)]
+struct BuildResult {
+    package_id: String,
+    size: u64,
+}
+
+#[derive(Serialize)]
+struct InstallResult {
+    package_id: String,
+    menu_changed: bool,
+    backups: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct LauncherStatus {
+    installed: bool,
+    cached: bool,
+}
+
+/// The template gallery and each template's field schema (for the form UI).
+#[tauri::command]
+fn app_templates() -> Vec<TemplateInfo> {
+    appbuild::TEMPLATES
+        .iter()
+        .map(|t| TemplateInfo {
+            id: t.id.into(),
+            he: t.he.into(),
+            en: t.en.into(),
+            desc_he: t.desc_he.into(),
+            desc_en: t.desc_en.into(),
+            fields: t
+                .fields
+                .iter()
+                .map(|f| FieldInfo {
+                    key: f.key.into(),
+                    kind: f.kind.into(),
+                    he: f.he.into(),
+                    en: f.en.into(),
+                })
+                .collect(),
+        })
+        .collect()
+}
+
+/// The stock menu slots a custom app can take over (direct-replace mode).
+#[tauri::command]
+fn app_slots() -> Vec<SlotTarget> {
+    watch_core::appids::PKG_SLOTS
+        .iter()
+        .map(|s| SlotTarget {
+            app_id: s.app_id,
+            hex: format!("0x{:X}", s.app_id),
+            package_id: s.package_id.into(),
+            label: s.label.into(),
+        })
+        .collect()
+}
+
+/// Whether the Glyphix build toolchain is present.
+#[tauri::command]
+fn gx_status() -> GxStatus {
+    GxStatus {
+        ready: appbuild::gx_ready(),
+        path: appbuild::gx_location(),
+    }
+}
+
+/// A valid Glyphix package id: lowercase dotted-reverse-domain, no path chars.
+fn valid_pkg_id(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 64
+        && s.contains('.')
+        && !s.starts_with('.')
+        && !s.ends_with('.')
+        && !s.contains("..")
+        && s.chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.' || c == '-')
+}
+
+fn app_staging(app: &tauri::AppHandle, package_id: &str) -> Result<PathBuf, String> {
+    Ok(app_dir(app, "app-staging")?.join(package_id))
+}
+
+/// Mount the hidden partition (or the demo root) and return it.
+fn resolve_root(state: &State<'_, Demo>) -> Result<PathBuf, String> {
+    if let Some(d) = demo_root(state) {
+        return Ok(d);
+    }
+    mount_partition()
+}
+
+/// Copy a file into the app-data `app-backups` folder before it is overwritten.
+fn backup_file(app: &tauri::AppHandle, src: &Path, label: &str) -> Option<String> {
+    let dir = app.path().app_data_dir().ok()?.join("app-backups");
+    std::fs::create_dir_all(&dir).ok()?;
+    let ts = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let name = src.file_name()?.to_string_lossy().into_owned();
+    let dest = dir.join(format!("{label}_{ts}_{name}"));
+    std::fs::copy(src, &dest).ok()?;
+    Some(dest.to_string_lossy().into_owned())
+}
+
+/// Copy a `.pkg` onto the hidden partition (`gui/apps/<id>.pkg`) and register it
+/// in `pkgs.db`. Existing files are backed up first.
+fn install_pkg(
+    app: &tauri::AppHandle,
+    root: &Path,
+    pkg_src: &Path,
+    package_id: &str,
+    backups: &mut Vec<String>,
+) -> Result<(), String> {
+    let apps = root.join("gui").join("apps");
+    std::fs::create_dir_all(&apps).map_err(|e| e.to_string())?;
+    let dest = apps.join(format!("{package_id}.pkg"));
+    if dest.is_file() {
+        if let Some(b) = backup_file(app, &dest, "pkg") {
+            backups.push(b);
+        }
+    }
+    let db_path = pkgsdb::path(root);
+    if db_path.is_file() {
+        if let Some(b) = backup_file(app, &db_path, "pkgsdb") {
+            backups.push(b);
+        }
+    }
+    std::fs::copy(pkg_src, &dest).map_err(|e| format!("copy pkg: {e}"))?;
+    let db = pkgsdb::add_app(pkgsdb::read(root), package_id);
+    pkgsdb::write(root, &db)?;
+    Ok(())
+}
+
+/// Read the current menu (dumped file on the mounted partition), ensure a
+/// visible slot points at `app_id`, and write it back (with a backup). Returns
+/// true if the menu was changed. The caller must have dumped the menu first
+/// (SaveMenu, in Charging mode) when on a real watch.
+fn ensure_slot_visible(
+    app: &tauri::AppHandle,
+    root: &Path,
+    app_id: u32,
+    is_demo: bool,
+    backups: &mut Vec<String>,
+) -> Result<bool, String> {
+    let path = menu_file(root);
+    // On a real watch the dump may take a moment to land; retry briefly.
+    let mut bytes = None;
+    let deadline = Instant::now() + Duration::from_secs(if is_demo { 0 } else { 10 });
+    loop {
+        if let Ok(b) = std::fs::read(&path) {
+            if b.len() == watch_core::menu::MENU_SIZE {
+                bytes = Some(b);
+                break;
+            }
+        }
+        if Instant::now() >= deadline {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(500));
+    }
+    let bytes = bytes.ok_or_else(|| "menu_not_found".to_string())?;
+    let mut menu = Menu::parse(&bytes).map_err(|e| e.to_string())?;
+
+    if menu.used_slots().iter().any(|s| s.app_id == app_id && s.flags == 1) {
+        return Ok(false); // already visible
+    }
+    if !menu.set_visible(app_id, true) {
+        // Slot not present at all: append a new visible slot for this AppID.
+        let mut slots = menu.used_slots();
+        slots.push(Slot { app_id, icon_id: 0, name_id: 0, flags: 1 });
+        menu = Menu::from_slots(&slots).map_err(|e| e.to_string())?;
+    }
+    if let Some(b) = backup_file(app, &path, "menu") {
+        backups.push(b);
+    }
+    std::fs::write(&path, menu.to_bytes()).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+/// Generate a project from a template and build it with gx, staged locally.
+/// `icon_b64` is a base64 192x192 PNG rendered by the UI (so it carries fonts).
+#[tauri::command]
+fn app_build(
+    app: tauri::AppHandle,
+    template: String,
+    package_id: String,
+    name: String,
+    fields: serde_json::Value,
+    icon_b64: String,
+) -> Result<BuildResult, String> {
+    if !valid_pkg_id(&package_id) {
+        return Err("bad_package_id".into());
+    }
+    if appbuild::template(&template).is_none() {
+        return Err("unknown_template".into());
+    }
+    let icon = base64::engine::general_purpose::STANDARD
+        .decode(icon_b64.trim_start_matches("data:image/png;base64,"))
+        .map_err(|e| e.to_string())?;
+    if icon.len() < 8 || icon[0..8] != [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] {
+        return Err("icon_not_png".into());
+    }
+    let proj = app_staging(&app, &package_id)?;
+    appbuild::generate_project(&proj, &template, &package_id, &name, &fields, &icon)?;
+    let (_pkg, size) = appbuild::build(&proj, &package_id)?;
+    Ok(BuildResult { package_id, size })
+}
+
+/// Install a built app onto the watch. In launcher mode pass `target_app_id`
+/// None (the app installs as a free package that the launcher lists); in
+/// direct-replace mode pass the stock slot's AppID to make it reachable from
+/// the watch menu.
+#[tauri::command]
+fn app_install(
+    app: tauri::AppHandle,
+    state: State<'_, Demo>,
+    package_id: String,
+    target_app_id: Option<u32>,
+) -> Result<InstallResult, String> {
+    if !valid_pkg_id(&package_id) {
+        return Err("bad_package_id".into());
+    }
+    let pkg = appbuild::dist_bundle(&app_staging(&app, &package_id)?, &package_id);
+    if !pkg.is_file() {
+        return Err("not_built".into());
+    }
+    let is_demo = demo_root(&state).is_some();
+    // Dump the current menu before mounting (SaveMenu needs the Charging port).
+    if target_app_id.is_some() && !is_demo {
+        let port = serial::find_port().ok_or_else(|| "not_charging".to_string())?;
+        serial::send(&port, SafeCommand::SaveMenu).map_err(|e| e.to_string())?;
+    }
+    let root = resolve_root(&state)?;
+    let mut backups = Vec::new();
+    install_pkg(&app, &root, &pkg, &package_id, &mut backups)?;
+    let mut menu_changed = false;
+    if let Some(aid) = target_app_id {
+        menu_changed = ensure_slot_visible(&app, &root, aid, is_demo, &mut backups)?;
+    }
+    Ok(InstallResult { package_id, menu_changed, backups })
+}
+
+/// Is the PurrLaunch launcher downloaded, and does the watch already have it
+/// registered (by package id in pkgs.db)?
+#[tauri::command]
+fn launcher_status(app: tauri::AppHandle, state: State<'_, Demo>) -> LauncherStatus {
+    let cached = app_dir(&app, "launcher")
+        .map(|d| appbuild::launcher_ready(&d))
+        .unwrap_or(false);
+    let installed = demo_root(&state)
+        .or_else(partition::find)
+        .map(|root| pkgsdb::has_app(&pkgsdb::read(&root), watch_core::appids::LAUNCHER_PACKAGE_ID))
+        .unwrap_or(false);
+    LauncherStatus { installed, cached }
+}
+
+/// Download (if needed) and install the PurrLaunch launcher into the Wooden Fish
+/// slot, so other custom apps can install as free packages and appear in it.
+#[tauri::command]
+fn launcher_install(
+    app: tauri::AppHandle,
+    state: State<'_, Demo>,
+) -> Result<InstallResult, String> {
+    let dir = app_dir(&app, "launcher")?;
+    if !appbuild::launcher_ready(&dir) {
+        appbuild::setup_launcher(&dir)?;
+    }
+    let pkg = appbuild::launcher_pkg(&dir);
+    if !pkg.is_file() {
+        return Err("launcher_not_ready".into());
+    }
+    let is_demo = demo_root(&state).is_some();
+    if !is_demo {
+        let port = serial::find_port().ok_or_else(|| "not_charging".to_string())?;
+        serial::send(&port, SafeCommand::SaveMenu).map_err(|e| e.to_string())?;
+    }
+    let root = resolve_root(&state)?;
+    let mut backups = Vec::new();
+    let pid = watch_core::appids::LAUNCHER_PACKAGE_ID;
+    install_pkg(&app, &root, &pkg, pid, &mut backups)?;
+    let menu_changed =
+        ensure_slot_visible(&app, &root, watch_core::appids::LAUNCHER_APP_ID, is_demo, &mut backups)?;
+    Ok(InstallResult { package_id: pid.into(), menu_changed, backups })
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(Demo::default())
@@ -639,7 +960,14 @@ pub fn run() {
             map_compiler_ready,
             map_compiler_setup,
             compile_region,
-            install_compiled_map
+            install_compiled_map,
+            app_templates,
+            app_slots,
+            gx_status,
+            app_build,
+            app_install,
+            launcher_status,
+            launcher_install
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

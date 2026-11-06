@@ -90,6 +90,33 @@ const I18N = {
     "maps.installed": "המפה הותקנה בשעון.",
     "maps.area_big": "האזור גדול - אם הקימפול נכשל, הקטן את התצוגה (זום פנימה).",
     "maps.need_name": "הזן שם למפה.",
+    "tab.apps": "אפליקציות",
+    "apps.title": "בונה אפליקציות",
+    "apps.intro": "בנה אפליקציות עברית פשוטות לשעון מתוך תבניות - ללא קוד. מלא טקסט, ראה תצוגה מקדימה חיה, והתקן.",
+    "apps.gx_missing": "כלי הבנייה (Glyphix gx) לא נמצא במחשב. בנייה והתקנה לא יעבדו עד שיותקן.",
+    "apps.launcher_title": "משגר (מומלץ)",
+    "apps.launcher_intro": "התקנת המשגר PurrLaunch פעם אחת (מחליף את 'דגי עץ'). אחריו כל אפליקציה חדשה מופיעה בתוכו אוטומטית, בלי לוותר על עוד פריט בתפריט.",
+    "apps.launcher_install": "התקן משגר",
+    "launcher.installed": "המשגר מותקן",
+    "launcher.not_installed": "המשגר לא מותקן",
+    "launcher.installing": "מוריד ומתקין את המשגר...",
+    "launcher.done": "המשגר הותקן. הפעל מחדש את השעון.",
+    "apps.pick_template": "בחר תבנית",
+    "apps.display_name": "שם האפליקציה (נראה במשגר)",
+    "apps.preview_hint": "תצוגה מקדימה חיה - כך זה ייראה על השעון",
+    "apps.install_title": "התקנה",
+    "apps.target": "יעד ההתקנה",
+    "apps.target_launcher": "אפליקציה חופשית במשגר (מומלץ)",
+    "apps.target_launcher_hint": "האפליקציה תופיע בתוך המשגר. צריך שהמשגר יהיה מותקן.",
+    "apps.target_slot_hint": "האפליקציה תחליף אפליקציית מקור ותתפוס את מקומה בתפריט.",
+    "apps.build_install": "בנה והתקן",
+    "apps.building": "בונה את האפליקציה (gx)...",
+    "apps.installing": "מתקין בשעון...",
+    "apps.need_title": "הזן כותרת לאפליקציה.",
+    "apps.need_launcher": "התקן קודם את המשגר, או בחר יעד של החלפת אפליקציה.",
+    "apps.restart": "הותקן. הפעל מחדש את השעון כדי לראות את האפליקציה.",
+    "apps.need": "חבר את השעון (או הפעל מצב דמו) כדי להתקין.",
+    "apps.built_demo": "נבנה בהצלחה (מצב דמו - לא הותקן בשעון).",
     "soon": "בבנייה. יתווסף בקרוב.",
     "footer.safe": "קריאה בלבד ומעברי-מצב בלבד. אין כתיבה או מחיקה לקושחה.",
   },
@@ -181,6 +208,33 @@ const I18N = {
     "maps.installed": "Map installed on the watch.",
     "maps.area_big": "Large area - if compiling fails, zoom in to a smaller area.",
     "maps.need_name": "Enter a map name.",
+    "tab.apps": "Apps",
+    "apps.title": "App builder",
+    "apps.intro": "Build simple Hebrew watch apps from templates - no code. Fill in text, see a live preview, and install.",
+    "apps.gx_missing": "The build toolchain (Glyphix gx) was not found. Building and installing will not work until it is installed.",
+    "apps.launcher_title": "Launcher (recommended)",
+    "apps.launcher_intro": "Install the PurrLaunch launcher once (it takes over Wooden Fish). After that, every new app appears inside it automatically, without giving up another menu slot.",
+    "apps.launcher_install": "Install launcher",
+    "launcher.installed": "Launcher installed",
+    "launcher.not_installed": "Launcher not installed",
+    "launcher.installing": "Downloading and installing the launcher...",
+    "launcher.done": "Launcher installed. Restart the watch.",
+    "apps.pick_template": "Choose a template",
+    "apps.display_name": "App name (shown in the launcher)",
+    "apps.preview_hint": "Live preview - this is how it looks on the watch",
+    "apps.install_title": "Install",
+    "apps.target": "Install target",
+    "apps.target_launcher": "Free app in the launcher (recommended)",
+    "apps.target_launcher_hint": "The app appears inside the launcher. Requires the launcher to be installed.",
+    "apps.target_slot_hint": "The app replaces a stock app and takes its place in the menu.",
+    "apps.build_install": "Build and install",
+    "apps.building": "Building the app (gx)...",
+    "apps.installing": "Installing to the watch...",
+    "apps.need_title": "Enter an app title.",
+    "apps.need_launcher": "Install the launcher first, or pick a replace-app target.",
+    "apps.restart": "Installed. Restart the watch to see the app.",
+    "apps.need": "Connect the watch (or turn on demo mode) to install.",
+    "apps.built_demo": "Built successfully (demo mode - not installed to a watch).",
     "soon": "Under construction. Coming soon.",
     "footer.safe": "Read-only and mode-change only. No firmware writes or erases.",
   },
@@ -261,6 +315,8 @@ function setStatus(mode) {
   if (bgTab) bgTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
   const mapsTab = document.querySelector('.nav-item[data-tab="maps"]');
   if (mapsTab) mapsTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
+  const appsTab = document.querySelector('.nav-item[data-tab="apps"]');
+  if (appsTab) appsTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
 }
 
 /* ---------- Maps ---------- */
@@ -708,6 +764,9 @@ function switchTab(name) {
     checkCompiler();
     setTimeout(() => leaflet && leaflet.invalidateSize(), 80);
   }
+  if (name === "apps") {
+    initApps();
+  }
 }
 
 /* ---------- Menu editor ---------- */
@@ -808,6 +867,290 @@ async function saveMenu() {
   }
 }
 
+/* ---------- App builder ---------- */
+let appTemplates = null;
+let appSlots = [];
+let appSel = null; // selected template object
+let appFields = {}; // key -> value
+let launcherInstalled = false;
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
+  );
+}
+
+// A small stable string hash -> 4 hex chars, for unique-but-stable package ids.
+function hash4(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  return ("0000" + h.toString(16)).slice(-4);
+}
+
+function slugify(s) {
+  const a = String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return a || "app";
+}
+
+async function initApps() {
+  const gxBox = document.getElementById("gxMissing");
+  try {
+    const gx = await invoke("gx_status");
+    gxBox.style.display = gx.ready ? "none" : "flex";
+  } catch (e) {
+    gxBox.style.display = "none";
+  }
+  if (!appTemplates) {
+    try {
+      appTemplates = await invoke("app_templates");
+      appSlots = await invoke("app_slots");
+    } catch (e) {
+      appTemplates = [];
+      appSlots = [];
+    }
+    renderGallery();
+  }
+  await refreshLauncher();
+}
+
+async function refreshLauncher() {
+  const pill = document.getElementById("launcherState");
+  try {
+    const st = await invoke("launcher_status");
+    launcherInstalled = !!st.installed;
+    pill.textContent = st.installed ? t("launcher.installed") : t("launcher.not_installed");
+    pill.className = "pill " + (st.installed ? "ok" : "");
+  } catch (e) {
+    launcherInstalled = false;
+    pill.textContent = t("launcher.not_installed");
+    pill.className = "pill";
+  }
+}
+
+function renderGallery() {
+  const g = document.getElementById("tplGallery");
+  g.innerHTML = "";
+  for (const tpl of appTemplates || []) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "tpl-card";
+    const name = lang === "he" ? tpl.he : tpl.en;
+    const desc = lang === "he" ? tpl.desc_he : tpl.desc_en;
+    card.innerHTML = '<div class="tpl-name"></div><div class="tpl-desc"></div>';
+    card.querySelector(".tpl-name").textContent = name;
+    card.querySelector(".tpl-desc").textContent = desc;
+    card.addEventListener("click", () => selectTemplate(tpl, card));
+    g.appendChild(card);
+  }
+}
+
+const APP_DEFAULT_COLORS = { bg: "#101322", accent: "#ffd65a" };
+
+function selectTemplate(tpl, card) {
+  appSel = tpl;
+  appFields = {};
+  document.querySelectorAll(".tpl-card").forEach((c) => c.classList.toggle("active", c === card));
+  // Seed defaults.
+  for (const f of tpl.fields) {
+    if (f.kind === "color") appFields[f.key] = APP_DEFAULT_COLORS[f.key] || "#101322";
+    else appFields[f.key] = "";
+  }
+  renderFields();
+  renderTargets();
+  document.getElementById("builderTitle").textContent = lang === "he" ? tpl.he : tpl.en;
+  document.getElementById("appBuilder").style.display = "grid";
+  document.getElementById("appInstallBox").style.display = "block";
+  document.getElementById("appDone").style.display = "none";
+  document.getElementById("appMsg").textContent = "";
+  renderPreview();
+}
+
+function renderFields() {
+  const box = document.getElementById("appFields");
+  box.innerHTML = "";
+  for (const f of appSel.fields) {
+    const ctrl = document.createElement("div");
+    ctrl.className = "ctrl";
+    const label = document.createElement("label");
+    label.textContent = lang === "he" ? f.he : f.en;
+    ctrl.appendChild(label);
+    let input;
+    if (f.kind === "multiline" || f.kind === "list") {
+      input = document.createElement("textarea");
+      input.rows = f.kind === "list" ? 5 : 7;
+    } else if (f.kind === "color") {
+      input = document.createElement("input");
+      input.type = "color";
+      input.value = appFields[f.key] || "#101322";
+    } else {
+      input = document.createElement("input");
+      input.type = "text";
+      if (f.kind === "phone") input.inputMode = "tel";
+    }
+    if (f.kind !== "color") input.value = appFields[f.key] || "";
+    input.addEventListener("input", () => {
+      appFields[f.key] = input.value;
+      renderPreview();
+    });
+    ctrl.appendChild(input);
+    box.appendChild(ctrl);
+  }
+}
+
+function renderTargets() {
+  const sel = document.getElementById("appTarget");
+  sel.innerHTML = "";
+  const opt = document.createElement("option");
+  opt.value = "launcher";
+  opt.textContent = t("apps.target_launcher");
+  sel.appendChild(opt);
+  for (const s of appSlots) {
+    const o = document.createElement("option");
+    o.value = "slot:" + s.app_id;
+    o.textContent = (lang === "he" ? "החלף: " : "Replace: ") + s.label + " (" + s.hex + ")";
+    sel.appendChild(o);
+  }
+  sel.onchange = updateTargetHint;
+  updateTargetHint();
+}
+
+function updateTargetHint() {
+  const sel = document.getElementById("appTarget");
+  const hint = document.getElementById("appTargetHint");
+  hint.textContent = sel.value === "launcher" ? t("apps.target_launcher_hint") : t("apps.target_slot_hint");
+}
+
+// Build the package id and optional target AppID for the chosen target.
+function targetPlan() {
+  const sel = document.getElementById("appTarget");
+  const title = appFields.title || document.getElementById("appName").value || "";
+  if (sel.value === "launcher") {
+    const pid = "com.abaye." + slugify(title) + hash4(appSel.id + "|" + title);
+    return { package_id: pid, target_app_id: null, launcher: true };
+  }
+  const appId = Number(sel.value.split(":")[1]);
+  const slot = appSlots.find((s) => s.app_id === appId);
+  return { package_id: slot.package_id, target_app_id: appId, launcher: false };
+}
+
+/* ----- live preview ----- */
+function previewHtml(tpl, f) {
+  const bg = /^#[0-9a-fA-F]{6}$/.test(f.bg || "") ? f.bg : APP_DEFAULT_COLORS.bg;
+  const ac = /^#[0-9a-fA-F]{6}$/.test(f.accent || "") ? f.accent : APP_DEFAULT_COLORS.accent;
+  const nn = (s) => (s || "").split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  if (tpl.id === "text_reader") {
+    const paras = nn(f.body).map((p) => `<div class="pv-para">${esc(p)}</div>`).join("");
+    const title = f.title ? `<div class="pv-title" style="color:${ac}">${esc(f.title)}</div>` : "";
+    return `<div class="pv-scroll" style="background:${bg}">${title}${paras}</div>`;
+  }
+  if (tpl.id === "list") {
+    const rows = nn(f.items).map((it) => `<div class="pv-row"><span>${esc(it)}</span></div>`).join("");
+    const title = f.title ? `<div class="pv-title" style="color:${ac}">${esc(f.title)}</div>` : "";
+    return `<div class="pv-scroll" style="background:${bg}">${title}${rows}</div>`;
+  }
+  // info_card
+  const lines = [f.line1, f.line2].filter((x) => x && x.trim())
+    .map((l) => `<div class="pv-line">${esc(l)}</div>`).join("");
+  const title = f.title ? `<div class="pv-title" style="color:${ac}">${esc(f.title)}</div>` : "";
+  const badge = f.name ? `<div class="pv-badge" style="background:${ac};color:${bg}">${esc(f.name)}</div>` : "";
+  const phone = f.phone ? `<div class="pv-phone">${esc(f.phone)}</div>` : "";
+  return `<div class="pv-center" style="background:${bg}">${title}${lines}${badge}${phone}</div>`;
+}
+
+function renderPreview() {
+  if (!appSel) return;
+  document.getElementById("appScreen").innerHTML = previewHtml(appSel, appFields);
+  drawAppIcon();
+}
+
+// Draw a 192x192 icon: accent-ring tile with the first glyph of the title/name.
+function drawAppIcon() {
+  const c = document.getElementById("appIcon");
+  const g = c.getContext("2d");
+  const bg = /^#[0-9a-fA-F]{6}$/.test(appFields.bg || "") ? appFields.bg : APP_DEFAULT_COLORS.bg;
+  const ac = /^#[0-9a-fA-F]{6}$/.test(appFields.accent || "") ? appFields.accent : APP_DEFAULT_COLORS.accent;
+  g.clearRect(0, 0, 192, 192);
+  g.fillStyle = bg;
+  g.beginPath();
+  g.arc(96, 96, 92, 0, Math.PI * 2);
+  g.fill();
+  g.lineWidth = 8;
+  g.strokeStyle = ac;
+  g.beginPath();
+  g.arc(96, 96, 86, 0, Math.PI * 2);
+  g.stroke();
+  const txt = (appFields.name || appFields.title || "A").trim();
+  const ch = Array.from(txt)[0] || "A";
+  g.fillStyle = ac;
+  g.font = "bold 110px Rubik, sans-serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(ch, 96, 104);
+}
+
+async function buildInstall() {
+  const msg = document.getElementById("appMsg");
+  const done = document.getElementById("appDone");
+  done.style.display = "none";
+  const title = (appFields.title || document.getElementById("appName").value || "").trim();
+  if (!title) {
+    msg.textContent = t("apps.need_title");
+    return;
+  }
+  const plan = targetPlan();
+  if (plan.launcher && !launcherInstalled && lastMode !== "demo") {
+    msg.textContent = t("apps.need_launcher");
+    return;
+  }
+  const name = (document.getElementById("appName").value || title).trim();
+  const icon = document.getElementById("appIcon").toDataURL("image/png");
+  try {
+    msg.textContent = t("apps.building");
+    await invoke("app_build", {
+      template: appSel.id,
+      packageId: plan.package_id,
+      name,
+      fields: appFields,
+      iconB64: icon,
+    });
+    msg.textContent = t("apps.installing");
+    await invoke("app_install", {
+      packageId: plan.package_id,
+      targetAppId: plan.target_app_id,
+    });
+    if (lastMode === "demo") {
+      msg.textContent = t("apps.built_demo");
+    } else {
+      msg.textContent = "";
+      done.style.display = "flex";
+    }
+    await refreshLauncher();
+  } catch (e) {
+    const s = String(e);
+    msg.textContent = s.includes("not_charging")
+      ? t("apps.need")
+      : s.includes("gx_not_ready")
+      ? t("apps.gx_missing")
+      : s;
+  }
+}
+
+async function launcherInstall() {
+  const msg = document.getElementById("launcherMsg");
+  msg.textContent = t("launcher.installing");
+  try {
+    await invoke("launcher_install");
+    msg.textContent = t("launcher.done");
+    await refreshLauncher();
+  } catch (e) {
+    const s = String(e);
+    msg.textContent = s.includes("not_charging") ? t("apps.need") : s;
+  }
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   applyStoredTheme();
   applyI18n();
@@ -854,6 +1197,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("geoInput").addEventListener("keydown", (e) => { if (e.key === "Enter") geocode(); });
   document.getElementById("compileBtn").addEventListener("click", compileMap);
   document.getElementById("installBtn").addEventListener("click", installCompiled);
+  document.getElementById("launcherInstall").addEventListener("click", launcherInstall);
+  document.getElementById("appBuild").addEventListener("click", buildInstall);
   document.querySelectorAll(".nav-item").forEach((b) => {
     b.addEventListener("click", () => { if (!b.disabled) switchTab(b.dataset.tab); });
   });

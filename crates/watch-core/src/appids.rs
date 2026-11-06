@@ -108,6 +108,33 @@ pub static MAP: &[(u32, &str)] = &[
     (0xC439, "Find device"),
 ];
 
+/// A stock `.pkg`-based menu slot a custom app can take over. Each tuple is
+/// (AppID, stock package id, English label). The firmware binds the AppID to
+/// this fixed package name, so a custom app that reuses the slot must be built
+/// with this exact package id and placed at `gui/apps/<package-id>.pkg`.
+///
+/// Only the local (non-network) slots are listed: these launch purely from the
+/// package on disk. Source: the community `AppID_mapping.csv`.
+pub struct PkgSlot {
+    pub app_id: u32,
+    pub package_id: &'static str,
+    pub label: &'static str,
+}
+
+/// The stock slots a custom app may replace. `com.xfaith.woodenfish` (Wooden
+/// Fish, AppID 0xC82C) is also the slot the PurrLaunch launcher takes over.
+pub static PKG_SLOTS: &[PkgSlot] = &[
+    PkgSlot { app_id: 0xC82C, package_id: "com.xfaith.woodenfish", label: "Wooden Fish" },
+    PkgSlot { app_id: 0xC826, package_id: "com.xfaith.calendar", label: "Permanent calendar" },
+    PkgSlot { app_id: 0xC82B, package_id: "com.xfaith.buddhabeads", label: "Buddha beads" },
+    PkgSlot { app_id: 0xC824, package_id: "com.xfaith.netease-cloud-music", label: "NetEase Cloud Music" },
+];
+
+/// The AppID of the slot the launcher takes over (Wooden Fish).
+pub const LAUNCHER_APP_ID: u32 = 0xC82C;
+/// The package id the launcher must be installed as.
+pub const LAUNCHER_PACKAGE_ID: &str = "com.xfaith.woodenfish";
+
 #[cfg(test)]
 mod tests {
     use super::*;
