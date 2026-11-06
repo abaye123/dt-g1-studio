@@ -21,7 +21,7 @@ const OSM_ENDPOINTS: &[&str] = &[
 
 /// An HTTP agent that uses the OS certificate store (schannel on Windows), so
 /// it trusts corporate/antivirus TLS-inspection roots the way the system does.
-fn agent() -> Result<ureq::Agent, String> {
+pub(crate) fn agent() -> Result<ureq::Agent, String> {
     let connector = native_tls::TlsConnector::new().map_err(|e| e.to_string())?;
     Ok(ureq::AgentBuilder::new()
         .tls_connector(std::sync::Arc::new(connector))

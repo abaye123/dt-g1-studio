@@ -8,6 +8,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 mod appbuild;
 mod mapcompile;
 mod pkgsdb;
+mod resources;
 
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
@@ -540,20 +541,22 @@ fn app_dir(app: &tauri::AppHandle, sub: &str) -> Result<PathBuf, String> {
     Ok(d)
 }
 
-/// Is the OSM map compiler downloaded and ready?
+/// Is the OSM map compiler available (bundled or staged)? Always true on
+/// Windows (bundled); false on platforms with no compiler build.
 #[tauri::command]
 fn map_compiler_ready(app: tauri::AppHandle) -> bool {
-    app_dir(&app, "map-compiler")
-        .map(|d| mapcompile::is_ready(&d))
-        .unwrap_or(false)
+    resources::map_compiler_dir(&app).is_some()
 }
 
-/// Download the official dtg1-map-tools compiler (one time, from its GitHub
-/// release). About 13 MB. Returns when ready.
+/// Ensure the map compiler is staged from the bundled copy, and try to refresh
+/// it to a newer release when online. Returns when a usable compiler exists.
 #[tauri::command]
 fn map_compiler_setup(app: tauri::AppHandle) -> Result<(), String> {
-    let dir = app_dir(&app, "map-compiler")?;
-    mapcompile::setup(&dir)
+    if resources::map_compiler_dir(&app).is_none() {
+        return Err("compiler_unavailable".into());
+    }
+    let _ = resources::update_map_compiler(&app);
+    Ok(())
 }
 
 /// Download OSM data for a bounding box and compile it to a watch map, staged
@@ -575,10 +578,8 @@ fn compile_region(
         "native" | "landuse" | "none" => poi_mode.as_str(),
         _ => "landuse",
     };
-    let compiler_dir = app_dir(&app, "map-compiler")?;
-    if !mapcompile::is_ready(&compiler_dir) {
-        return Err("compiler_not_ready".into());
-    }
+    let compiler_dir =
+        resources::map_compiler_dir(&app).ok_or_else(|| "compiler_not_ready".to_string())?;
     let osm = app_dir(&app, "tmp")?.join("map.osm");
     let osm_bytes = mapcompile::download_osm(west, south, east, north, &osm)?;
     let staging = app_dir(&app, "map-staging")?.join(&name);
@@ -712,13 +713,24 @@ fn app_slots() -> Vec<SlotTarget> {
         .collect()
 }
 
-/// Whether the Glyphix build toolchain is present.
+/// Whether the Glyphix build toolchain is present (bundled or dev fallback).
 #[tauri::command]
-fn gx_status() -> GxStatus {
-    GxStatus {
-        ready: appbuild::gx_ready(),
-        path: appbuild::gx_location(),
+fn gx_status(app: tauri::AppHandle) -> GxStatus {
+    match resources::gx_dir(&app) {
+        Some(dir) => GxStatus {
+            ready: appbuild::gx_ready(&dir),
+            path: appbuild::gx_location(&dir),
+        },
+        None => GxStatus { ready: false, path: String::new() },
     }
+}
+
+/// Best-effort refresh of the updatable tools (map compiler, launcher) to newer
+/// GitHub releases when online. Silent on failure; the bundled copies remain.
+#[tauri::command]
+fn check_tool_updates(app: tauri::AppHandle) {
+    let _ = resources::update_map_compiler(&app);
+    let _ = resources::update_launcher(&app);
 }
 
 /// A valid Glyphix package id: lowercase dotted-reverse-domain, no path chars.
@@ -854,9 +866,10 @@ fn app_build(
     if icon.len() < 8 || icon[0..8] != [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] {
         return Err("icon_not_png".into());
     }
+    let gx = resources::gx_dir(&app).ok_or_else(|| "gx_not_ready".to_string())?;
     let proj = app_staging(&app, &package_id)?;
     appbuild::generate_project(&proj, &template, &package_id, &name, &fields, &icon)?;
-    let (_pkg, size) = appbuild::build(&proj, &package_id)?;
+    let (_pkg, size) = appbuild::build(&gx, &proj, &package_id)?;
     Ok(BuildResult { package_id, size })
 }
 
@@ -898,9 +911,7 @@ fn app_install(
 /// registered (by package id in pkgs.db)?
 #[tauri::command]
 fn launcher_status(app: tauri::AppHandle, state: State<'_, Demo>) -> LauncherStatus {
-    let cached = app_dir(&app, "launcher")
-        .map(|d| appbuild::launcher_ready(&d))
-        .unwrap_or(false);
+    let cached = resources::launcher_pkg(&app).is_some();
     let installed = demo_root(&state)
         .or_else(partition::find)
         .map(|root| pkgsdb::has_app(&pkgsdb::read(&root), watch_core::appids::LAUNCHER_PACKAGE_ID))
@@ -915,14 +926,7 @@ fn launcher_install(
     app: tauri::AppHandle,
     state: State<'_, Demo>,
 ) -> Result<InstallResult, String> {
-    let dir = app_dir(&app, "launcher")?;
-    if !appbuild::launcher_ready(&dir) {
-        appbuild::setup_launcher(&dir)?;
-    }
-    let pkg = appbuild::launcher_pkg(&dir);
-    if !pkg.is_file() {
-        return Err("launcher_not_ready".into());
-    }
+    let pkg = resources::launcher_pkg(&app).ok_or_else(|| "launcher_not_ready".to_string())?;
     let is_demo = demo_root(&state).is_some();
     if !is_demo {
         let port = serial::find_port().ok_or_else(|| "not_charging".to_string())?;
@@ -964,6 +968,7 @@ pub fn run() {
             app_templates,
             app_slots,
             gx_status,
+            check_tool_updates,
             app_build,
             app_install,
             launcher_status,

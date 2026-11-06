@@ -758,6 +758,7 @@ async function ping() {
 function switchTab(name) {
   document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
+  if (name === "maps" || name === "apps") maybeCheckToolUpdates();
   if (name === "maps") {
     loadMaps();
     initMap();
@@ -767,6 +768,15 @@ function switchTab(name) {
   if (name === "apps") {
     initApps();
   }
+}
+
+// Refresh the updatable tools (map compiler, launcher) once per session,
+// best-effort. The bundled copies work regardless, so failures are ignored.
+let toolsChecked = false;
+function maybeCheckToolUpdates() {
+  if (toolsChecked) return;
+  toolsChecked = true;
+  invoke("check_tool_updates").catch(() => {});
 }
 
 /* ---------- Menu editor ---------- */

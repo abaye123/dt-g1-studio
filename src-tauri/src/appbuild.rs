@@ -6,40 +6,43 @@
 //! The heavy lifting (JS bytecode, UX compilation, PGF images) is done by the
 //! official `gx` toolchain; we only generate the project tree and shell out.
 
-use std::io::Read as _;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Where the Glyphix toolchain lives (installed once, locally). `gx` and
-/// `image-forge` are under `<root>/node_modules/.bin`, which must be on PATH
-/// for a build (the build calls `image-forge` by bare name).
-const TOOLCHAIN_ROOT: &str = r"C:\dev\dt-g1-watch\dt-g1-research\tools\glyphix-toolchain";
 const DEVICE: &str = "dtg1-c175r";
 
 /// PurrLaunch (purrrock, MIT) - a launcher/package-manager built for this watch.
-/// Its release zip ships a ready `com.xfaith.woodenfish.pkg`.
+/// Its release ships a ready `com.xfaith.woodenfish.pkg` as a direct asset.
 const PURRLAUNCH_RELEASE: &str =
     "https://api.github.com/repos/purrrock/PurrLaunch/releases/latest";
 const UA: &str = "dt-g1-studio";
 
-/// The `node_modules/.bin` directory of the toolchain.
-fn toolchain_bin() -> PathBuf {
-    Path::new(TOOLCHAIN_ROOT).join("node_modules").join(".bin")
+fn gx_exe_name() -> &'static str {
+    if cfg!(windows) {
+        "gx.exe"
+    } else {
+        "gx"
+    }
 }
 
-/// The gx launcher script (a Windows `.cmd` wrapper).
-fn gx_cmd() -> PathBuf {
-    toolchain_bin().join("gx.cmd")
+/// The `bin` directory of a gx toolchain root (holds gx + image-forge + jsc).
+fn gx_bin(gx_dir: &Path) -> PathBuf {
+    gx_dir.join("bin")
 }
 
-/// Is the toolchain present and runnable?
-pub fn gx_ready() -> bool {
-    gx_cmd().is_file() && toolchain_bin().join("image-forge.cmd").is_file()
+/// The gx executable inside a toolchain root.
+fn gx_exe(gx_dir: &Path) -> PathBuf {
+    gx_bin(gx_dir).join(gx_exe_name())
 }
 
-/// A human-readable toolchain path for the UI.
-pub fn gx_location() -> String {
-    gx_cmd().to_string_lossy().into_owned()
+/// Is a usable gx toolchain present at `gx_dir`?
+pub fn gx_ready(gx_dir: &Path) -> bool {
+    gx_exe(gx_dir).is_file()
+}
+
+/// A human-readable gx path for the UI.
+pub fn gx_location(gx_dir: &Path) -> String {
+    gx_exe(gx_dir).to_string_lossy().into_owned()
 }
 
 /// An HTTP agent that uses the OS certificate store, like the map compiler, so
@@ -330,21 +333,21 @@ pub fn dist_bundle(project_dir: &Path, package_id: &str) -> PathBuf {
 }
 
 /// Run `gx build` on a generated project and return the produced `bundle.pkg`
-/// path and its size. The toolchain `.bin` is put on PATH so the build's
-/// `image-forge`/`pngquant` calls resolve.
-pub fn build(project_dir: &Path, package_id: &str) -> Result<(PathBuf, u64), String> {
-    if !gx_ready() {
+/// path and its size. `gx_dir` is a toolchain root; its `bin` is put on PATH so
+/// the build's `image-forge`/`pngquant` calls resolve, and its bundled
+/// `share/glyphix/devices` supplies the `dtg1-c175r` profile.
+pub fn build(gx_dir: &Path, project_dir: &Path, package_id: &str) -> Result<(PathBuf, u64), String> {
+    if !gx_ready(gx_dir) {
         return Err("gx_not_ready".into());
     }
-    let bin = toolchain_bin();
+    let bin = gx_bin(gx_dir);
+    let sep = if cfg!(windows) { ";" } else { ":" };
     let path_env = match std::env::var("PATH") {
-        Ok(p) => format!("{};{}", bin.to_string_lossy(), p),
+        Ok(p) => format!("{}{sep}{}", bin.to_string_lossy(), p),
         Err(_) => bin.to_string_lossy().into_owned(),
     };
 
-    let out = std::process::Command::new("cmd")
-        .arg("/C")
-        .arg("gx")
+    let out = std::process::Command::new(gx_exe(gx_dir))
         .arg("build")
         .arg("-d")
         .arg(DEVICE)
@@ -383,16 +386,8 @@ pub fn build(project_dir: &Path, package_id: &str) -> Result<(PathBuf, u64), Str
 // Launcher (PurrLaunch)
 // ---------------------------------------------------------------------------
 
-/// Local path where the downloaded launcher package is cached.
-pub fn launcher_pkg(dir: &Path) -> PathBuf {
-    dir.join("com.xfaith.woodenfish.pkg")
-}
-
-pub fn launcher_ready(dir: &Path) -> bool {
-    launcher_pkg(dir).is_file()
-}
-
-/// Download the latest PurrLaunch release and extract its `.pkg` into `dir`.
+/// Download the latest PurrLaunch launcher `.pkg` into `dir`. The release ships
+/// the package as a direct `.pkg` asset (not inside a zip).
 pub fn setup_launcher(dir: &Path) -> Result<(), String> {
     let http = agent()?;
     let meta = http
@@ -408,41 +403,53 @@ pub fn setup_launcher(dir: &Path) -> Result<(), String> {
         .and_then(|a| {
             a.iter()
                 .filter_map(|x| x["browser_download_url"].as_str())
-                .find(|u| u.ends_with(".zip"))
+                .find(|u| u.to_lowercase().ends_with(".pkg"))
         })
-        .ok_or_else(|| "no zip asset in the latest release".to_string())?
+        .ok_or_else(|| "no .pkg asset in the latest launcher release".to_string())?
         .to_string();
 
-    let mut buf = Vec::new();
-    http.get(&url)
-        .set("User-Agent", UA)
-        .call()
-        .map_err(|e| format!("download failed: {e}"))?
-        .into_reader()
-        .read_to_end(&mut buf)
-        .map_err(|e| e.to_string())?;
-
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(buf)).map_err(|e| e.to_string())?;
-    let mut found = false;
-    for i in 0..zip.len() {
-        let mut f = zip.by_index(i).map_err(|e| e.to_string())?;
-        if f.is_dir() {
-            continue;
-        }
-        let base = match f.enclosed_name().and_then(|p| p.file_name().map(|n| n.to_owned())) {
-            Some(n) => n,
-            None => continue,
-        };
-        if base.to_string_lossy().to_lowercase().ends_with(".pkg") {
-            let mut outf = std::fs::File::create(launcher_pkg(dir)).map_err(|e| e.to_string())?;
-            std::io::copy(&mut f, &mut outf).map_err(|e| e.to_string())?;
-            found = true;
-            break;
-        }
-    }
-    if !found {
-        return Err("no pkg in launcher release".into());
-    }
+    let dest = dir.join(crate::resources::LAUNCHER_PKG_NAME);
+    let mut outf = std::fs::File::create(&dest).map_err(|e| e.to_string())?;
+    std::io::copy(
+        &mut http
+            .get(&url)
+            .set("User-Agent", UA)
+            .call()
+            .map_err(|e| format!("download failed: {e}"))?
+            .into_reader(),
+        &mut outf,
+    )
+    .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod itest {
+    use super::*;
+
+    // Offline build test against the bundled gx toolchain. Requires
+    // `scripts/vendor.ps1` to have assembled src-tauri/resources/gx.
+    //   cargo test -p dt-g1-studio-app --lib build_with_vendored_gx -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn build_with_vendored_gx() {
+        let gx = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join("gx");
+        assert!(gx_ready(&gx), "vendored gx present (run scripts/vendor.ps1)");
+        let proj = std::env::temp_dir().join("dtg1_appbuild_test").join("com.abaye.btest");
+        let fields = serde_json::json!({
+            "title": "שלום", "line1": "בדיקה", "bg": "#101322", "accent": "#ffd65a"
+        });
+        // A real 192x192 PNG (what the UI canvas sends).
+        use image::ImageEncoder as _;
+        let img = image::RgbImage::from_pixel(192, 192, image::Rgb([26, 17, 64]));
+        let mut png = Vec::new();
+        image::codecs::png::PngEncoder::new(&mut png)
+            .write_image(img.as_raw(), 192, 192, image::ExtendedColorType::Rgb8)
+            .unwrap();
+        generate_project(&proj, "info_card", "com.abaye.btest", "Btest", &fields, &png).expect("gen");
+        let (pkg, size) = build(&gx, &proj, "com.abaye.btest").expect("build");
+        println!("bundle = {} ({} bytes)", pkg.display(), size);
+        assert!(pkg.is_file() && size > 0);
+    }
 }

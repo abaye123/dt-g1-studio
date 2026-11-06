@@ -12,6 +12,9 @@ dist/
 src-tauri/target/
 src-tauri/gen/
 
+# === Vendored tool binaries (assembled by scripts/vendor.* or CI, ~80 MB) ===
+src-tauri/resources/
+
 # === Signing material and secrets (never commit) ===
 *.pfx
 *.p12
