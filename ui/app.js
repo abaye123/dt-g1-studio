@@ -90,6 +90,8 @@ const I18N = {
     "maps.installed": "המפה הותקנה בשעון.",
     "maps.area_big": "האזור גדול - אם הקימפול נכשל, הקטן את התצוגה (זום פנימה).",
     "maps.need_name": "הזן שם למפה.",
+    "maps.need_mount": "השעון במצב טעינה, וכונן המפות שלו עוד לא מחובר למחשב.",
+    "maps.mount": "חבר את כונן השעון",
     "tab.apps": "אפליקציות",
     "apps.title": "בונה אפליקציות",
     "apps.intro": "בנה אפליקציות עברית פשוטות לשעון מתוך תבניות - ללא קוד. מלא טקסט, ראה תצוגה מקדימה חיה, והתקן.",
@@ -208,6 +210,8 @@ const I18N = {
     "maps.installed": "Map installed on the watch.",
     "maps.area_big": "Large area - if compiling fails, zoom in to a smaller area.",
     "maps.need_name": "Enter a map name.",
+    "maps.need_mount": "The watch is in Charging mode and its map drive is not mounted yet.",
+    "maps.mount": "Mount the watch drive",
     "tab.apps": "Apps",
     "apps.title": "App builder",
     "apps.intro": "Build simple Hebrew watch apps from templates - no code. Fill in text, see a live preview, and install.",
@@ -348,7 +352,28 @@ async function loadMaps() {
     }
   } catch (e) {
     list.innerHTML = "";
-    msg.textContent = String(e).includes("not_mounted") ? t("maps.need") : String(e);
+    if (String(e).includes("not_mounted") && lastMode === "charging") {
+      // Charging mode: the drives are not mounted yet. Offer an explicit mount
+      // (it switches the watch to storage mode, like "Open the partition").
+      msg.textContent = t("maps.need_mount");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn primary";
+      b.textContent = t("maps.mount");
+      b.addEventListener("click", async () => {
+        b.disabled = true;
+        msg.textContent = t("partition.exposing");
+        try {
+          await invoke("expose_partition");
+          await loadMaps();
+        } catch (err) {
+          msg.textContent = String(err);
+        }
+      });
+      list.appendChild(b);
+    } else {
+      msg.textContent = String(e).includes("not_mounted") ? t("maps.need") : String(e);
+    }
   }
 }
 

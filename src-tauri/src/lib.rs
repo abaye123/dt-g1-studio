@@ -462,6 +462,34 @@ fn safe_name(name: &str) -> bool {
         && !name.contains(':')
 }
 
+/// The display name stored in a `map.name` file. The watch format (as written by
+/// WearPro and the compiler) is JSON `{"centerLat":..,"centerLon":..,"mapName":".."}`;
+/// older/plain files hold just the name as text.
+fn map_display_name(content: &str) -> String {
+    let s = content.trim_start_matches('\u{feff}').trim();
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(s) {
+        if let Some(n) = v.get("mapName").and_then(|n| n.as_str()) {
+            return n.trim().to_string();
+        }
+    }
+    s.lines().next().unwrap_or("").trim().to_string()
+}
+
+/// Set the display name in a staged `map.name`. The compiler ignores the region
+/// name and writes "DTG1_Map", so we rewrite `mapName` and keep its computed
+/// center. A non-JSON file is replaced by the JSON form without a center.
+fn set_map_display_name(file: &Path, display: &str) -> Result<(), String> {
+    let mut v = std::fs::read(file)
+        .ok()
+        .and_then(|b| String::from_utf8(b).ok())
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(s.trim_start_matches('\u{feff}').trim()).ok())
+        .filter(|v| v.is_object())
+        .unwrap_or_else(|| serde_json::json!({}));
+    v["mapName"] = serde_json::Value::String(display.to_string());
+    let text = serde_json::to_string(&v).map_err(|e| e.to_string())?;
+    std::fs::write(file, text.as_bytes()).map_err(|e| e.to_string())
+}
+
 /// List the offline maps installed on the watch (each folder under MAP/map).
 #[tauri::command]
 fn list_maps(state: State<'_, Demo>) -> Result<Vec<MapInfo>, String> {
@@ -477,7 +505,7 @@ fn list_maps(state: State<'_, Demo>) -> Result<Vec<MapInfo>, String> {
             let display = std::fs::read(path.join("map.name"))
                 .ok()
                 .and_then(|b| String::from_utf8(b).ok())
-                .map(|s| s.lines().next().unwrap_or("").trim().to_string())
+                .map(|s| map_display_name(&s))
                 .filter(|s| !s.is_empty())
                 .unwrap_or_else(|| name.clone());
             out.push(MapInfo { name, display, size: dir_size(&path) });
@@ -600,6 +628,19 @@ fn compile_region(
     let staging = app_dir(&app, "map-staging")?.join(&name);
     let files = mapcompile::compile(&compiler_dir, &osm, &staging, &name, poi)?;
     let _ = std::fs::remove_file(&osm);
+    // The compiler writes mapName "DTG1_Map"; put the user's name in.
+    set_map_display_name(&staging.join("map.name"), &name)?;
+    let files: Vec<(String, u64)> = files
+        .into_iter()
+        .map(|(f, s)| {
+            let size = if f == "map.name" {
+                staging.join(&f).metadata().map(|m| m.len()).unwrap_or(s)
+            } else {
+                s
+            };
+            (f, size)
+        })
+        .collect();
     let total = files.iter().map(|(_, s)| *s).sum();
     Ok(CompileResult {
         osm_bytes,
@@ -996,6 +1037,24 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn map_name_json_and_plain() {
+        let j = r#"{"centerLat":31.82,"centerLon":35.19,"mapName":"צפון ירושלים"}"#;
+        assert_eq!(map_display_name(j), "צפון ירושלים");
+        assert_eq!(map_display_name("Tel Aviv\n"), "Tel Aviv");
+    }
+
+    #[test]
+    fn map_name_rewrite_keeps_center() {
+        let f = std::env::temp_dir().join(format!("dtg1_mapname_{}.name", std::process::id()));
+        std::fs::write(&f, r#"{"centerLat":31.822712,"centerLon":35.1956545,"mapName":"DTG1_Map"}"#).unwrap();
+        set_map_display_name(&f, "רמות").unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&std::fs::read(&f).unwrap()).unwrap();
+        assert_eq!(v["mapName"], "רמות");
+        assert_eq!(v["centerLat"], 31.822712);
+        std::fs::remove_file(&f).ok();
+    }
 
     #[test]
     fn portable_marker_routes_data_beside_exe() {
