@@ -134,15 +134,18 @@ mod itest {
         std::fs::copy(&osm_en, &osm_he).unwrap();
         localize_hebrew(&osm_he).expect("localize");
 
-        for (tag, osm) in [("en", &osm_en), ("he", &osm_he)] {
+        for (tag, osm, style) in [("en", &osm_en, "bold"), ("he", &osm_he, "bold"), ("he_factory", &osm_he, "factory")] {
             let comp = base.join(format!("compiler_{tag}"));
             std::fs::create_dir_all(&comp).unwrap();
             for e in std::fs::read_dir(&bundled).unwrap().flatten() {
                 std::fs::copy(e.path(), comp.join(e.file_name())).unwrap();
             }
             let staging = base.join(format!("out_{tag}"));
-            let files = crate::mapcompile::compile(&comp, osm, &staging, "Test", "landuse").expect("compile");
+            let files = crate::mapcompile::compile(&comp, osm, &staging, "Test", "landuse", style).expect("compile");
             let db = std::fs::read(staging.join("roads.db")).unwrap_or_default();
+            // header MD5 must still match the body after the space restore
+            use md5::{Digest, Md5};
+            assert_eq!(&db[16..32], Md5::digest(&db[32..]).as_slice(), "roads.db md5");
             let text = String::from_utf8_lossy(&db);
             let hebrew = text.chars().filter(|c| ('\u{05D0}'..='\u{05EA}').contains(c)).count();
             let latin = text.chars().filter(|c| c.is_ascii_alphabetic()).count();

@@ -93,6 +93,8 @@ const I18N = {
     "maps.need_mount": "השעון במצב טעינה, וכונן המפות שלו עוד לא מחובר למחשב.",
     "maps.labels_he": "שמות במפה: עברית",
     "maps.labels_en": "שמות במפה: אנגלית",
+    "maps.roads_bold": "רחובות: בכל רמות הזום",
+    "maps.roads_factory": "רחובות: כמו במפה הרשמית",
     "maps.on": "פעילה",
     "maps.off": "כבויה",
     "maps.turn_off": "כבה את המפה (השעון לא יטען אותה; לא נמחקת)",
@@ -221,6 +223,8 @@ const I18N = {
     "maps.need_mount": "The watch is in Charging mode and its map drive is not mounted yet.",
     "maps.labels_he": "Map labels: Hebrew",
     "maps.labels_en": "Map labels: English",
+    "maps.roads_bold": "Streets: at every zoom",
+    "maps.roads_factory": "Streets: like the official map",
     "maps.on": "On",
     "maps.off": "Off",
     "maps.turn_off": "Turn the map off (the watch will not load it; it is not deleted)",
@@ -518,13 +522,14 @@ async function compileMap() {
   const b = leaflet.getBounds();
   const poi = document.getElementById("poiMode").value;
   const labelLang = document.getElementById("labelLang").value;
+  const roadStyle = document.getElementById("roadStyle").value;
   document.getElementById("compileResult").style.display = "none";
   document.getElementById("compileBtn").disabled = true;
   msg.textContent = t("maps.downloading");
   try {
     const r = await invoke("compile_region", {
       west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth(),
-      name, poiMode: poi, labelLang,
+      name, poiMode: poi, labelLang, roadStyle,
     });
     compiledName = name;
     msg.textContent = "";

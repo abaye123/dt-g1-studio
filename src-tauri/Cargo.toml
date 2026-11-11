@@ -23,3 +23,4 @@ base64 = "0.22"
 ureq = { version = "2.12", default-features = false, features = ["native-tls", "gzip"] }
 native-tls = "0.2"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+md-5 = "0.10"

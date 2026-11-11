@@ -650,7 +650,8 @@ fn map_compiler_setup(app: tauri::AppHandle) -> Result<(), String> {
 /// Download OSM data for a bounding box and compile it to a watch map, staged
 /// locally. Returns the OSM size and the produced map files with sizes.
 /// `label_lang` is "he" (Hebrew labels) or "en" (the compiler's default, English
-/// where available).
+/// where available). `road_style` is "bold" (streets at every zoom) or
+/// "factory" (true road codes, as in the official maps).
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 fn compile_region(
@@ -662,7 +663,12 @@ fn compile_region(
     name: String,
     poi_mode: String,
     label_lang: Option<String>,
+    road_style: Option<String>,
 ) -> Result<CompileResult, String> {
+    let road_style = match road_style.as_deref() {
+        Some("factory") => "factory",
+        _ => "bold",
+    };
     if !safe_name(&name) {
         return Err("bad_name".into());
     }
@@ -678,7 +684,7 @@ fn compile_region(
         osmlang::localize_hebrew(&osm)?;
     }
     let staging = app_dir(&app, "map-staging")?.join(&name);
-    let files = mapcompile::compile(&compiler_dir, &osm, &staging, &name, poi)?;
+    let files = mapcompile::compile(&compiler_dir, &osm, &staging, &name, poi, road_style)?;
     let _ = std::fs::remove_file(&osm);
     // The compiler writes mapName "DTG1_Map"; put the user's name in.
     set_map_display_name(&staging.join("map.name"), &name)?;
