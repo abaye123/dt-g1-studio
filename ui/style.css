@@ -256,7 +256,7 @@ h2.sub { font-size: 17px; font-weight: 600; margin: 28px 0 4px; }
 }
 .leaf-map .leaflet-control-attribution { font-size: 10px; }
 .map-form { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
-.map-form input {
+.map-form input[type="text"] {
   flex: 1;
   min-width: 160px;
   background: var(--surface);
@@ -267,7 +267,7 @@ h2.sub { font-size: 17px; font-weight: 600; margin: 28px 0 4px; }
   font-family: inherit;
   font-size: 14px;
 }
-.map-form input:focus { outline: none; border-color: var(--accent); }
+.map-form input[type="text"]:focus { outline: none; border-color: var(--accent); }
 .select {
   background: var(--surface);
   border: 1px solid var(--border-strong);
@@ -683,3 +683,7 @@ html[dir="rtl"] .switch input:checked + .slider::before { transform: translateX(
   body { grid-template-columns: 1fr; grid-template-areas: "header" "main"; }
   .sidebar { display: none; }
 }
+
+/* checkbox with label (map compile options) */
+.check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }

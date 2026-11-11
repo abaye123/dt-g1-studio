@@ -7,6 +7,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 mod appbuild;
 mod mapcompile;
+mod osmlabels;
 mod osmlang;
 mod pkgsdb;
 mod resources;
@@ -664,7 +665,9 @@ fn compile_region(
     poi_mode: String,
     label_lang: Option<String>,
     road_style: Option<String>,
+    street_labels: Option<bool>,
 ) -> Result<CompileResult, String> {
+    let street_labels = street_labels.unwrap_or(false);
     let road_style = match road_style.as_deref() {
         Some("factory") => "factory",
         _ => "bold",
@@ -683,8 +686,15 @@ fn compile_region(
     if label_lang.as_deref() == Some("he") {
         osmlang::localize_hebrew(&osm)?;
     }
+    // Street-name labels go in after the language rewrite so they copy the
+    // already-chosen name tags.
+    let mut extra_rows: Vec<&str> = Vec::new();
+    if street_labels {
+        osmlabels::add_street_labels(&osm)?;
+        extra_rows.push(osmlabels::LUT_ROW);
+    }
     let staging = app_dir(&app, "map-staging")?.join(&name);
-    let files = mapcompile::compile(&compiler_dir, &osm, &staging, &name, poi, road_style)?;
+    let files = mapcompile::compile(&compiler_dir, &osm, &staging, &name, poi, road_style, &extra_rows)?;
     let _ = std::fs::remove_file(&osm);
     // The compiler writes mapName "DTG1_Map"; put the user's name in.
     set_map_display_name(&staging.join("map.name"), &name)?;

@@ -142,14 +142,24 @@ pub fn road_table(base: &str, style: &str) -> String {
     out
 }
 
-/// Prepare features.csv for one compile from the pristine base table.
-fn write_lut(compiler_dir: &Path, style: &str) -> Result<(), String> {
+/// Prepare features.csv for one compile from the pristine base table: apply the
+/// road style, then append `extra_rows` at the end (the loader reads top to
+/// bottom, so later rows win).
+fn write_lut(compiler_dir: &Path, style: &str, extra_rows: &[&str]) -> Result<(), String> {
     let base_path = compiler_dir.join(BASE_LUT);
     if !base_path.is_file() {
         std::fs::copy(compiler_dir.join("features.csv"), &base_path).map_err(|e| format!("lut base: {e}"))?;
     }
     let base = std::fs::read_to_string(&base_path).map_err(|e| e.to_string())?;
-    std::fs::write(compiler_dir.join("features.csv"), road_table(&base, style)).map_err(|e| e.to_string())
+    let mut lut = road_table(&base, style);
+    if !lut.ends_with('\n') {
+        lut.push('\n');
+    }
+    for row in extra_rows {
+        lut.push_str(row);
+        lut.push('\n');
+    }
+    std::fs::write(compiler_dir.join("features.csv"), lut).map_err(|e| e.to_string())
 }
 
 /// The compiler stores names with spaces turned into '_'. The official maps
@@ -248,6 +258,7 @@ pub fn compile(
     region_name: &str,
     poi_mode: &str,
     road_style: &str,
+    extra_lut_rows: &[&str],
 ) -> Result<Vec<(String, u64)>, String> {
     // Clean any stale inputs/outputs in the compiler dir.
     let map_osm = compiler_dir.join("map.osm");
@@ -255,7 +266,7 @@ pub fn compile(
     for o in OUTPUTS {
         let _ = std::fs::remove_file(compiler_dir.join(o));
     }
-    write_lut(compiler_dir, road_style)?;
+    write_lut(compiler_dir, road_style, extra_lut_rows)?;
     std::fs::copy(osm, &map_osm).map_err(|e| format!("copy osm: {e}"))?;
 
     let out = std::process::Command::new(exe_path(compiler_dir))
@@ -337,7 +348,7 @@ mod itest {
         let bytes = download_osm(34.770, 32.070, 34.778, 32.076, &osm).expect("download");
         println!("osm bytes = {bytes}");
         let staging = base.join("staging");
-        let files = compile(&compiler, &osm, &staging, "TestArea", "landuse", "bold").expect("compile");
+        let files = compile(&compiler, &osm, &staging, "TestArea", "landuse", "bold", &[]).expect("compile");
         println!("map files = {files:?}");
         assert!(files.iter().any(|(n, _)| n == "map.name"));
     }

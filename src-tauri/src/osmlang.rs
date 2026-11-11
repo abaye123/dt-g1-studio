@@ -133,15 +133,26 @@ mod itest {
         let osm_he = base.join("he.osm");
         std::fs::copy(&osm_en, &osm_he).unwrap();
         localize_hebrew(&osm_he).expect("localize");
+        let osm_lbl = base.join("he_labels.osm");
+        std::fs::copy(&osm_he, &osm_lbl).unwrap();
+        let n_labels = crate::osmlabels::add_street_labels(&osm_lbl).expect("labels");
+        println!("street labels injected: {n_labels}");
 
-        for (tag, osm, style) in [("en", &osm_en, "bold"), ("he", &osm_he, "bold"), ("he_factory", &osm_he, "factory")] {
+        let none: &[&str] = &[];
+        let lbl_rows: &[&str] = &[crate::osmlabels::LUT_ROW];
+        for (tag, osm, style, rows) in [
+            ("en", &osm_en, "bold", none),
+            ("he", &osm_he, "bold", none),
+            ("he_factory", &osm_he, "factory", none),
+            ("he_labels", &osm_lbl, "factory", lbl_rows),
+        ] {
             let comp = base.join(format!("compiler_{tag}"));
             std::fs::create_dir_all(&comp).unwrap();
             for e in std::fs::read_dir(&bundled).unwrap().flatten() {
                 std::fs::copy(e.path(), comp.join(e.file_name())).unwrap();
             }
             let staging = base.join(format!("out_{tag}"));
-            let files = crate::mapcompile::compile(&comp, osm, &staging, "Test", "landuse", style).expect("compile");
+            let files = crate::mapcompile::compile(&comp, osm, &staging, "Test", "landuse", style, rows).expect("compile");
             let db = std::fs::read(staging.join("roads.db")).unwrap_or_default();
             // header MD5 must still match the body after the space restore
             use md5::{Digest, Md5};

@@ -95,6 +95,7 @@ const I18N = {
     "maps.labels_en": "שמות במפה: אנגלית",
     "maps.roads_bold": "רחובות: בכל רמות הזום",
     "maps.roads_factory": "רחובות: כמו במפה הרשמית",
+    "maps.street_labels": "הצג שמות רחובות על המפה",
     "maps.on": "פעילה",
     "maps.off": "כבויה",
     "maps.turn_off": "כבה את המפה (השעון לא יטען אותה; לא נמחקת)",
@@ -225,6 +226,7 @@ const I18N = {
     "maps.labels_en": "Map labels: English",
     "maps.roads_bold": "Streets: at every zoom",
     "maps.roads_factory": "Streets: like the official map",
+    "maps.street_labels": "Show street names on the map",
     "maps.on": "On",
     "maps.off": "Off",
     "maps.turn_off": "Turn the map off (the watch will not load it; it is not deleted)",
@@ -523,13 +525,14 @@ async function compileMap() {
   const poi = document.getElementById("poiMode").value;
   const labelLang = document.getElementById("labelLang").value;
   const roadStyle = document.getElementById("roadStyle").value;
+  const streetLabels = document.getElementById("streetLabels").checked;
   document.getElementById("compileResult").style.display = "none";
   document.getElementById("compileBtn").disabled = true;
   msg.textContent = t("maps.downloading");
   try {
     const r = await invoke("compile_region", {
       west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth(),
-      name, poiMode: poi, labelLang, roadStyle,
+      name, poiMode: poi, labelLang, roadStyle, streetLabels,
     });
     compiledName = name;
     msg.textContent = "";
