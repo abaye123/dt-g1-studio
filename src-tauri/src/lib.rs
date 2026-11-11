@@ -429,6 +429,8 @@ struct MapInfo {
     name: String,
     display: String,
     size: u64,
+    /// false = turned off (parked in MAP_off, not loaded by the watch).
+    enabled: bool,
 }
 
 /// The MAP/map directory on the user partition (or the demo tree).
@@ -437,6 +439,21 @@ fn maps_dir(state: &State<'_, Demo>) -> Option<PathBuf> {
         return Some(d.join("MAP").join("map"));
     }
     partition::find_user().map(|r| r.join("MAP").join("map"))
+}
+
+/// Where turned-off maps are parked: `MAP_off` at the drive root, outside `MAP`
+/// entirely so the watch never scans it. Moving a folder back re-enables it.
+fn maps_off_dir(state: &State<'_, Demo>) -> Option<PathBuf> {
+    let root = demo_root(state).or_else(partition::find_user)?;
+    Some(root.join("MAP_off"))
+}
+
+/// The folder of map `name`, whether enabled or turned off.
+fn find_map_folder(state: &State<'_, Demo>, name: &str) -> Option<PathBuf> {
+    [maps_dir(state)?, maps_off_dir(state)?]
+        .into_iter()
+        .map(|d| d.join(name))
+        .find(|p| p.is_dir())
 }
 
 fn dir_size(p: &Path) -> u64 {
@@ -490,12 +507,16 @@ fn set_map_display_name(file: &Path, display: &str) -> Result<(), String> {
     std::fs::write(file, text.as_bytes()).map_err(|e| e.to_string())
 }
 
-/// List the offline maps installed on the watch (each folder under MAP/map).
+/// List the offline maps on the watch: enabled ones (MAP/map) and turned-off
+/// ones (MAP_off). Enabled maps come first.
 #[tauri::command]
 fn list_maps(state: State<'_, Demo>) -> Result<Vec<MapInfo>, String> {
-    let dir = maps_dir(&state).ok_or_else(|| "user_partition_not_mounted".to_string())?;
+    let on = maps_dir(&state).ok_or_else(|| "user_partition_not_mounted".to_string())?;
+    let off = maps_off_dir(&state);
     let mut out = Vec::new();
-    if let Ok(rd) = std::fs::read_dir(&dir) {
+    for (dir, enabled) in [(Some(on), true), (off, false)] {
+        let Some(dir) = dir else { continue };
+        let Ok(rd) = std::fs::read_dir(&dir) else { continue };
         for e in rd.flatten() {
             let path = e.path();
             if !path.is_dir() {
@@ -508,10 +529,14 @@ fn list_maps(state: State<'_, Demo>) -> Result<Vec<MapInfo>, String> {
                 .map(|s| map_display_name(&s))
                 .filter(|s| !s.is_empty())
                 .unwrap_or_else(|| name.clone());
-            out.push(MapInfo { name, display, size: dir_size(&path) });
+            out.push(MapInfo { name, display, size: dir_size(&path), enabled });
         }
     }
-    out.sort_by(|a, b| a.display.to_lowercase().cmp(&b.display.to_lowercase()));
+    out.sort_by(|a, b| {
+        b.enabled
+            .cmp(&a.enabled)
+            .then_with(|| a.display.to_lowercase().cmp(&b.display.to_lowercase()))
+    });
     Ok(out)
 }
 
@@ -521,13 +546,32 @@ fn delete_map(state: State<'_, Demo>, name: String) -> Result<(), String> {
     if !safe_name(&name) {
         return Err("bad_name".into());
     }
-    let dir = maps_dir(&state).ok_or_else(|| "user_partition_not_mounted".to_string())?;
-    let target = dir.join(&name);
-    if !target.starts_with(&dir) || !target.is_dir() {
-        return Err("not_found".into());
-    }
+    maps_dir(&state).ok_or_else(|| "user_partition_not_mounted".to_string())?;
+    let target = find_map_folder(&state, &name).ok_or_else(|| "not_found".to_string())?;
     std::fs::remove_dir_all(&target).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// Turn a map on or off. Off moves its folder from MAP/map to MAP_off (so the
+/// watch does not load it); on moves it back. Nothing is deleted.
+#[tauri::command]
+fn set_map_enabled(state: State<'_, Demo>, name: String, enabled: bool) -> Result<(), String> {
+    if !safe_name(&name) {
+        return Err("bad_name".into());
+    }
+    let on = maps_dir(&state).ok_or_else(|| "user_partition_not_mounted".to_string())?;
+    let off = maps_off_dir(&state).ok_or_else(|| "user_partition_not_mounted".to_string())?;
+    let (from, to) = if enabled { (off, on) } else { (on, off) };
+    let src = from.join(&name);
+    let dst = to.join(&name);
+    if !src.is_dir() {
+        return Err("not_found".into());
+    }
+    if dst.exists() {
+        return Err("name_exists".into());
+    }
+    std::fs::create_dir_all(&to).map_err(|e| e.to_string())?;
+    std::fs::rename(&src, &dst).map_err(|e| e.to_string())
 }
 
 /// Open the MAP/map folder in Windows File Explorer (creating it if needed), so
@@ -1016,6 +1060,7 @@ pub fn run() {
             apply_background_jpeg,
             list_maps,
             delete_map,
+            set_map_enabled,
             reveal_maps,
             map_compiler_ready,
             map_compiler_setup,

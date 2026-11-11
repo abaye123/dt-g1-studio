@@ -229,6 +229,7 @@ input[type="color"] {
   cursor: pointer;
 }
 .map-del:hover { border-color: var(--err); color: var(--err); }
+.map-row.off .map-info, .map-row.off svg.map-icon { opacity: .45; }
 .map-del svg { width: 16px; height: 16px; }
 .map-empty { padding: 20px 14px; color: var(--muted); }
 

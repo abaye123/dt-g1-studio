@@ -91,6 +91,12 @@ const I18N = {
     "maps.area_big": "האזור גדול - אם הקימפול נכשל, הקטן את התצוגה (זום פנימה).",
     "maps.need_name": "הזן שם למפה.",
     "maps.need_mount": "השעון במצב טעינה, וכונן המפות שלו עוד לא מחובר למחשב.",
+    "maps.on": "פעילה",
+    "maps.off": "כבויה",
+    "maps.turn_off": "כבה את המפה (השעון לא יטען אותה; לא נמחקת)",
+    "maps.turn_on": "הפעל את המפה",
+    "maps.toggled": "עודכן. הפעל מחדש את השעון כדי שהשינוי ייכנס לתוקף.",
+    "maps.name_exists": "כבר קיימת מפה בשם הזה במצב השני. מחק או שנה אחת מהן.",
     "maps.mount": "חבר את כונן השעון",
     "tab.apps": "אפליקציות",
     "apps.title": "בונה אפליקציות",
@@ -211,6 +217,12 @@ const I18N = {
     "maps.area_big": "Large area - if compiling fails, zoom in to a smaller area.",
     "maps.need_name": "Enter a map name.",
     "maps.need_mount": "The watch is in Charging mode and its map drive is not mounted yet.",
+    "maps.on": "On",
+    "maps.off": "Off",
+    "maps.turn_off": "Turn the map off (the watch will not load it; it is not deleted)",
+    "maps.turn_on": "Turn the map on",
+    "maps.toggled": "Updated. Restart the watch for the change to take effect.",
+    "maps.name_exists": "A map with this name already exists in the other state. Delete or rename one.",
     "maps.mount": "Mount the watch drive",
     "tab.apps": "Apps",
     "apps.title": "App builder",
@@ -340,13 +352,20 @@ async function loadMaps() {
     }
     for (const m of maps) {
       const row = document.createElement("div");
-      row.className = "map-row";
+      row.className = "map-row" + (m.enabled ? "" : " off");
       row.innerHTML =
         '<svg class="map-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15"/></svg>' +
         '<div class="map-info"><div class="map-name"></div><div class="map-sub"></div></div>' +
+        '<label class="switch" title=""><input type="checkbox" /><span class="slider"></span></label>' +
         '<button class="map-del"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>';
       row.querySelector(".map-name").textContent = m.display;
-      row.querySelector(".map-sub").textContent = m.name + "  ·  " + formatSize(m.size);
+      row.querySelector(".map-sub").textContent =
+        m.name + "  ·  " + formatSize(m.size) + "  ·  " + (m.enabled ? t("maps.on") : t("maps.off"));
+      const sw = row.querySelector(".switch");
+      sw.title = m.enabled ? t("maps.turn_off") : t("maps.turn_on");
+      const cb = sw.querySelector("input");
+      cb.checked = m.enabled;
+      cb.addEventListener("change", () => toggleMap(m, cb.checked, cb));
       row.querySelector(".map-del").addEventListener("click", () => deleteMap(m));
       list.appendChild(row);
     }
@@ -374,6 +393,20 @@ async function loadMaps() {
     } else {
       msg.textContent = String(e).includes("not_mounted") ? t("maps.need") : String(e);
     }
+  }
+}
+
+async function toggleMap(m, enabled, cb) {
+  const msg = document.getElementById("mapsMsg");
+  cb.disabled = true;
+  try {
+    await invoke("set_map_enabled", { name: m.name, enabled });
+    msg.textContent = t("maps.toggled");
+    await loadMaps();
+  } catch (e) {
+    cb.checked = !enabled;
+    cb.disabled = false;
+    msg.textContent = String(e).includes("name_exists") ? t("maps.name_exists") : String(e);
   }
 }
 
