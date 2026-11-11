@@ -1,12 +1,14 @@
 //! Street-name labels for the native map.
 //!
 //! The watch firmware does not label every street: it looks up the road near the
-//! current GPS position and draws only that name. It does draw the names of
-//! landuse polygons (that is how baked POI names appear, in Hebrew too). So for
-//! each named street we inject a tiny closed polygon (a few meters, effectively a
-//! dot) at a point on the street, carrying the street's name tags, in a custom
-//! landuse class (`dtg1_label=street`) that [`LUT_ROW`] routes to the landuse
-//! layer. Long streets get a label every [`SPACING_M`] meters.
+//! current GPS position and draws only that name. It does draw the names of baked
+//! POIs (Hebrew included, verified on the watch). A first attempt with tiny 4 m
+//! landuse squares (code 7203) was present in the files but not drawn, so labels
+//! now take exactly the POI path: for each named street we inject a POI node on
+//! the street, carrying the street's name tags, in a custom POI class
+//! (`dtg1_label=street`) that [`LUT_ROW`] routes to the same hardware code as the
+//! other POIs. The compiler bakes it with a small shape, like any POI, so this
+//! needs the "baked" POI mode. Long streets get a label every [`SPACING_M`] meters.
 //!
 //! Runs on the downloaded OSM XML before compilation, after any language
 //! rewrite, and copies all name tags so the compiler picks the same language.
@@ -15,16 +17,13 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 
-/// Extra features.csv row for the label class. Landuse polygons are drawn up to
-/// the 500 m display scale (above that the firmware blocks polygons), so LOD 500.
-/// Hardware code 7203 (light green) is otherwise only used by a disabled row.
+/// Extra features.csv row for the label class: a POI baked into the landuse layer
+/// with code 7219 (the code all baked POIs use), LOD 500 and the default shape.
 pub const LUT_ROW: &str =
-    "7290;street_label;Light-green;500;landuse;dtg1_label=street;Street name label;7203;Light-green;500;1;";
+    "2998;street_label;Black;100;pois;dtg1_label=street;Street name label;7219;Salmon;500;1;rhombus";
 
 /// Minimum distance between two labels of the same street name.
 const SPACING_M: f64 = 250.0;
-/// Side of the injected square, in meters.
-const SIZE_M: f64 = 4.0;
 /// Street classes that get labels.
 const STREETS: &[&str] = &[
     "motorway", "trunk", "primary", "secondary", "tertiary", "unclassified",
@@ -120,60 +119,40 @@ fn plan(osm: &Path) -> Result<Vec<Label>, String> {
     Ok(labels)
 }
 
-/// Inject street-name label polygons into an OSM XML file in place. Returns the
-/// number of labels added. New nodes go before the first way (the compiler reads
-/// nodes first), new ways before `</osm>`. Ids are negative, as in JOSM edits.
+/// Inject street-name label POI nodes into an OSM XML file in place. Returns the
+/// number of labels added. The new nodes go before the first way (the compiler
+/// reads nodes first). Ids are negative, as in JOSM edits.
 pub fn add_street_labels(osm: &Path) -> Result<usize, String> {
     let labels = plan(osm)?;
     if labels.is_empty() {
         return Ok(0);
     }
     let mut new_nodes = String::new();
-    let mut new_ways = String::new();
-    let mut next_id: i64 = -1;
-    let half = SIZE_M / 2.0;
-    for l in &labels {
-        let dlat = half / 111_320.0;
-        let dlon = half / (111_320.0 * l.lat.to_radians().cos());
-        let corners = [(l.lat + dlat, l.lon - dlon), (l.lat + dlat, l.lon + dlon), (l.lat - dlat, l.lon + dlon), (l.lat - dlat, l.lon - dlon)];
-        let mut ids = Vec::new();
-        for (lat, lon) in corners {
-            new_nodes.push_str(&format!("  <node id=\"{next_id}\" lat=\"{lat:.7}\" lon=\"{lon:.7}\"/>\n"));
-            ids.push(next_id);
-            next_id -= 1;
-        }
-        new_ways.push_str(&format!("  <way id=\"{next_id}\">\n"));
-        next_id -= 1;
-        for id in ids.iter().chain(std::iter::once(&ids[0])) {
-            new_ways.push_str(&format!("    <nd ref=\"{id}\"/>\n"));
-        }
-        new_ways.push_str("    <tag k=\"dtg1_label\" v=\"street\"/>\n");
+    for (i, l) in labels.iter().enumerate() {
+        let id = -(i as i64) - 1;
+        new_nodes.push_str(&format!("  <node id=\"{id}\" lat=\"{:.7}\" lon=\"{:.7}\">\n", l.lat, l.lon));
+        new_nodes.push_str("    <tag k=\"dtg1_label\" v=\"street\"/>\n");
         for (k, v) in &l.names {
-            new_ways.push_str(&format!("    <tag k=\"{k}\" v=\"{v}\"/>\n"));
+            new_nodes.push_str(&format!("    <tag k=\"{k}\" v=\"{v}\"/>\n"));
         }
-        new_ways.push_str("  </way>\n");
+        new_nodes.push_str("  </node>\n");
     }
 
     let tmp = osm.with_extension("osm.lbl");
     {
         let input = std::fs::File::open(osm).map_err(|e| e.to_string())?;
         let mut w = BufWriter::new(std::fs::File::create(&tmp).map_err(|e| e.to_string())?);
-        let mut nodes_written = false;
-        let mut ways_written = false;
+        let mut written = false;
         for line in BufReader::new(input).lines() {
             let line = line.map_err(|e| e.to_string())?;
             let t = line.trim_start();
-            if !nodes_written && (t.starts_with("<way ") || t.starts_with("<relation ") || t.starts_with("</osm>")) {
+            if !written && (t.starts_with("<way ") || t.starts_with("<relation ") || t.starts_with("</osm>")) {
                 w.write_all(new_nodes.as_bytes()).map_err(|e| e.to_string())?;
-                nodes_written = true;
-            }
-            if !ways_written && (t.starts_with("<relation ") || t.starts_with("</osm>")) {
-                w.write_all(new_ways.as_bytes()).map_err(|e| e.to_string())?;
-                ways_written = true;
+                written = true;
             }
             writeln!(w, "{line}").map_err(|e| e.to_string())?;
         }
-        if !ways_written {
+        if !written {
             return Err("osm file has no closing </osm>".into());
         }
         w.flush().map_err(|e| e.to_string())?;
@@ -239,13 +218,14 @@ mod tests {
         assert_eq!(out.matches("dtg1_label").count(), 2);
         // the footway is not labelled: its name appears only on the original way
         assert_eq!(out.matches("שביל").count(), 1);
-        // new nodes come before the first original way, new ways before </osm>
+        // the label POI nodes come before the first original way
         let first_way = out.find("<way id=\"10\"").unwrap();
-        assert!(out.find("<node id=\"-1\"").unwrap() < first_way);
-        assert!(out.rfind("dtg1_label").unwrap() < out.find("</osm>").unwrap());
+        assert!(out.rfind("dtg1_label").unwrap() < first_way);
+        assert!(out.contains(r#"<node id="-1" lat="31.8010000" lon="35.2000000">"#));
+        assert!(out.contains(r#"<node id="-2""#));
         // name tags copied, including name:en
         assert!(out.contains(r#"<tag k="name:en" v="Golda Meir"/>"#));
-        // each label polygon is closed (first ref repeated)
-        assert_eq!(out.matches("<nd ref=\"-1\"/>").count(), 2);
+        // POI nodes only: no new ways
+        assert_eq!(out.matches("<way ").count(), 5);
     }
 }

@@ -676,6 +676,8 @@ fn compile_region(
         return Err("bad_name".into());
     }
     let poi = match poi_mode.as_str() {
+        // Street labels are baked POIs, so they need the baked ("landuse") mode.
+        _ if street_labels => "landuse",
         "native" | "landuse" | "none" => poi_mode.as_str(),
         _ => "landuse",
     };
