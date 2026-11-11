@@ -7,6 +7,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 mod appbuild;
 mod mapcompile;
+mod osmlang;
 mod pkgsdb;
 mod resources;
 
@@ -648,7 +649,10 @@ fn map_compiler_setup(app: tauri::AppHandle) -> Result<(), String> {
 
 /// Download OSM data for a bounding box and compile it to a watch map, staged
 /// locally. Returns the OSM size and the produced map files with sizes.
+/// `label_lang` is "he" (Hebrew labels) or "en" (the compiler's default, English
+/// where available).
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 fn compile_region(
     app: tauri::AppHandle,
     west: f64,
@@ -657,6 +661,7 @@ fn compile_region(
     north: f64,
     name: String,
     poi_mode: String,
+    label_lang: Option<String>,
 ) -> Result<CompileResult, String> {
     if !safe_name(&name) {
         return Err("bad_name".into());
@@ -669,6 +674,9 @@ fn compile_region(
         resources::map_compiler_dir(&app).ok_or_else(|| "compiler_not_ready".to_string())?;
     let osm = app_dir(&app, "tmp")?.join("map.osm");
     let osm_bytes = mapcompile::download_osm(west, south, east, north, &osm)?;
+    if label_lang.as_deref() == Some("he") {
+        osmlang::localize_hebrew(&osm)?;
+    }
     let staging = app_dir(&app, "map-staging")?.join(&name);
     let files = mapcompile::compile(&compiler_dir, &osm, &staging, &name, poi)?;
     let _ = std::fs::remove_file(&osm);

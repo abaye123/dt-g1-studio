@@ -91,6 +91,8 @@ const I18N = {
     "maps.area_big": "האזור גדול - אם הקימפול נכשל, הקטן את התצוגה (זום פנימה).",
     "maps.need_name": "הזן שם למפה.",
     "maps.need_mount": "השעון במצב טעינה, וכונן המפות שלו עוד לא מחובר למחשב.",
+    "maps.labels_he": "שמות במפה: עברית",
+    "maps.labels_en": "שמות במפה: אנגלית",
     "maps.on": "פעילה",
     "maps.off": "כבויה",
     "maps.turn_off": "כבה את המפה (השעון לא יטען אותה; לא נמחקת)",
@@ -217,6 +219,8 @@ const I18N = {
     "maps.area_big": "Large area - if compiling fails, zoom in to a smaller area.",
     "maps.need_name": "Enter a map name.",
     "maps.need_mount": "The watch is in Charging mode and its map drive is not mounted yet.",
+    "maps.labels_he": "Map labels: Hebrew",
+    "maps.labels_en": "Map labels: English",
     "maps.on": "On",
     "maps.off": "Off",
     "maps.turn_off": "Turn the map off (the watch will not load it; it is not deleted)",
@@ -513,13 +517,14 @@ async function compileMap() {
   if (!leaflet) return;
   const b = leaflet.getBounds();
   const poi = document.getElementById("poiMode").value;
+  const labelLang = document.getElementById("labelLang").value;
   document.getElementById("compileResult").style.display = "none";
   document.getElementById("compileBtn").disabled = true;
   msg.textContent = t("maps.downloading");
   try {
     const r = await invoke("compile_region", {
       west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth(),
-      name, poiMode: poi,
+      name, poiMode: poi, labelLang,
     });
     compiledName = name;
     msg.textContent = "";
