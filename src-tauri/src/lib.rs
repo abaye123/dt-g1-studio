@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 mod appbuild;
+mod contours;
 mod mapcompile;
 mod osmlabels;
 mod osmlang;
@@ -600,6 +601,9 @@ struct CompileResult {
     osm_bytes: u64,
     total: u64,
     files: Vec<FileSize>,
+    /// Contour lines and vertices added (0 when contours are off).
+    contour_lines: usize,
+    contour_points: usize,
 }
 
 /// The portable data dir for a given executable directory, if a `portable.txt`
@@ -666,8 +670,11 @@ fn compile_region(
     label_lang: Option<String>,
     road_style: Option<String>,
     street_labels: Option<bool>,
+    contour_interval: Option<u32>,
 ) -> Result<CompileResult, String> {
     let street_labels = street_labels.unwrap_or(false);
+    // 0 / None = no contours; otherwise the spacing in meters (10, 20, 50).
+    let contour_interval = contour_interval.filter(|m| *m >= 5);
     let road_style = match road_style.as_deref() {
         Some("factory") => "factory",
         _ => "bold",
@@ -695,6 +702,14 @@ fn compile_region(
         osmlabels::add_street_labels(&osm)?;
         extra_rows.push(osmlabels::LUT_ROW);
     }
+    // Elevation contours from the Copernicus DEM (cached for offline reuse).
+    let (mut contour_lines, mut contour_points) = (0, 0);
+    if let Some(interval) = contour_interval {
+        let stats = contours::add_contours(&osm, (west, south, east, north), interval, &app_dir(&app, "dem")?)?;
+        contour_lines = stats.lines;
+        contour_points = stats.points;
+        extra_rows.extend(contours::LUT_ROWS);
+    }
     let staging = app_dir(&app, "map-staging")?.join(&name);
     let files = mapcompile::compile(&compiler_dir, &osm, &staging, &name, poi, road_style, &extra_rows)?;
     let _ = std::fs::remove_file(&osm);
@@ -716,6 +731,8 @@ fn compile_region(
         osm_bytes,
         total,
         files: files.into_iter().map(|(name, size)| FileSize { name, size }).collect(),
+        contour_lines,
+        contour_points,
     })
 }
 

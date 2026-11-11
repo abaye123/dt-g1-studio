@@ -714,6 +714,7 @@ name = "dt-g1-studio-app"
 version = "0.2.2"
 dependencies = [
  "base64 0.22.1",
+ "flate2",
  "image",
  "md-5",
  "native-tls",

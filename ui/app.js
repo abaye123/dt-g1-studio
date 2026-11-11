@@ -91,6 +91,13 @@ const I18N = {
     "maps.area_big": "האזור גדול - אם הקימפול נכשל, הקטן את התצוגה (זום פנימה).",
     "maps.need_name": "הזן שם למפה.",
     "maps.need_mount": "השעון במצב טעינה, וכונן המפות שלו עוד לא מחובר למחשב.",
+    "maps.contours_off": "קווי גובה: ללא",
+    "maps.contours_50": "קווי גובה: כל 50 מ'",
+    "maps.contours_20": "קווי גובה: כל 20 מ'",
+    "maps.contours_10": "קווי גובה: כל 10 מ' (צפוף)",
+    "maps.contours_stats": "קווי גובה: {n} קווים, {p} נקודות",
+    "maps.contours_too_large": "האזור גדול מדי לקווי גובה. הקטן את האזור או כבה את קווי הגובה.",
+    "maps.contours_offline": "לא ניתן להוריד נתוני גובה (אין רשת?). אזור שכבר הורד בעבר יעבוד גם בלי רשת.",
     "maps.labels_he": "שמות במפה: עברית",
     "maps.labels_en": "שמות במפה: אנגלית",
     "maps.roads_bold": "רחובות: בכל רמות הזום",
@@ -222,6 +229,13 @@ const I18N = {
     "maps.area_big": "Large area - if compiling fails, zoom in to a smaller area.",
     "maps.need_name": "Enter a map name.",
     "maps.need_mount": "The watch is in Charging mode and its map drive is not mounted yet.",
+    "maps.contours_off": "Contours: none",
+    "maps.contours_50": "Contours: every 50 m",
+    "maps.contours_20": "Contours: every 20 m",
+    "maps.contours_10": "Contours: every 10 m (dense)",
+    "maps.contours_stats": "contours: {n} lines, {p} points",
+    "maps.contours_too_large": "The area is too large for contours. Shrink the area or turn contours off.",
+    "maps.contours_offline": "Could not download elevation data (no network?). Areas downloaded before work offline.",
     "maps.labels_he": "Map labels: Hebrew",
     "maps.labels_en": "Map labels: English",
     "maps.roads_bold": "Streets: at every zoom",
@@ -526,22 +540,26 @@ async function compileMap() {
   const labelLang = document.getElementById("labelLang").value;
   const roadStyle = document.getElementById("roadStyle").value;
   const streetLabels = document.getElementById("streetLabels").checked;
+  const contourInterval = Number(document.getElementById("contourInterval").value) || null;
   document.getElementById("compileResult").style.display = "none";
   document.getElementById("compileBtn").disabled = true;
   msg.textContent = t("maps.downloading");
   try {
     const r = await invoke("compile_region", {
       west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth(),
-      name, poiMode: poi, labelLang, roadStyle, streetLabels,
+      name, poiMode: poi, labelLang, roadStyle, streetLabels, contourInterval,
     });
     compiledName = name;
     msg.textContent = "";
     document.getElementById("compileResultText").textContent =
-      "OSM: " + fmtSize(r.osm_bytes) + "  ·  " + t("maps.title") + ": " + fmtSize(r.total);
+      "OSM: " + fmtSize(r.osm_bytes) + "  ·  " + t("maps.title") + ": " + fmtSize(r.total) +
+      (r.contour_lines ? "  ·  " + t("maps.contours_stats").replace("{n}", r.contour_lines).replace("{p}", r.contour_points) : "");
     document.getElementById("compileResult").style.display = "flex";
   } catch (e) {
     const s = String(e);
-    msg.textContent = s.includes("area_too_large") ? t("maps.area_big")
+    msg.textContent = s.includes("contour_area_too_large") ? t("maps.contours_too_large")
+      : s.includes("dem_download_failed") ? t("maps.contours_offline")
+      : s.includes("area_too_large") ? t("maps.area_big")
       : s.includes("compiler_not_ready") ? t("maps.setup_note")
       : s.includes("osm_download_failed") ? "OSM download failed - try again or a smaller area."
       : s;

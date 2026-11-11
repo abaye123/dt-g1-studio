@@ -24,3 +24,4 @@ ureq = { version = "2.12", default-features = false, features = ["native-tls", "
 native-tls = "0.2"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 md-5 = "0.10"
+flate2 = "1"
