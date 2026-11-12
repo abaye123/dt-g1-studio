@@ -110,6 +110,26 @@ const I18N = {
     "maps.toggled": "עודכן. הפעל מחדש את השעון כדי שהשינוי ייכנס לתוקף.",
     "maps.name_exists": "כבר קיימת מפה בשם הזה במצב השני. מחק או שנה אחת מהן.",
     "maps.mount": "חבר את כונן השעון",
+    "tab.wireless": "חיבור אלחוטי",
+    "ble.title": "חיבור אלחוטי (Bluetooth)",
+    "ble.intro": "התחבר לשעון בלי כבל, דרך ה-Bluetooth של המחשב: סנכרון שעה, מצב סוללה ושליחת מזג אוויר.",
+    "ble.phone_note": "השעון מתחבר רק למכשיר אחד בכל פעם. כבה את ה-Bluetooth בטלפון לפני החיבור, והדלק אותו שוב בסיום.",
+    "ble.disconnected": "לא מחובר",
+    "ble.connecting": "מחפש את השעון...",
+    "ble.connected": "מחובר",
+    "ble.connect": "התחבר",
+    "ble.disconnect": "נתק",
+    "ble.sync_time": "סנכרן שעה",
+    "ble.battery": "סוללה",
+    "ble.time_done": "השעה סונכרנה",
+    "ble.not_found": "השעון לא נמצא. ודא שה-Bluetooth בטלפון כבוי ושהשעון קרוב.",
+    "ble.weather_title": "מזג אוויר",
+    "ble.weather_intro": "חפש עיר ושלח לשעון את מזג האוויר הנוכחי, תחזית שעתית ותחזית ל-7 ימים.",
+    "ble.weather_city": "עיר נבחרת:",
+    "ble.weather_send": "שלח מזג אוויר לשעון",
+    "ble.weather_done": "נשלח",
+    "ble.no_results": "לא נמצאו תוצאות",
+    "ble.weather_credit": "נתוני מזג האוויר: Open-Meteo.com",
     "tab.apps": "אפליקציות",
     "apps.title": "בונה אפליקציות",
     "apps.intro": "בנה אפליקציות עברית פשוטות לשעון מתוך תבניות - ללא קוד. מלא טקסט, ראה תצוגה מקדימה חיה, והתקן.",
@@ -248,6 +268,26 @@ const I18N = {
     "maps.toggled": "Updated. Restart the watch for the change to take effect.",
     "maps.name_exists": "A map with this name already exists in the other state. Delete or rename one.",
     "maps.mount": "Mount the watch drive",
+    "tab.wireless": "Wireless",
+    "ble.title": "Wireless link (Bluetooth)",
+    "ble.intro": "Connect to the watch without a cable, over the computer's Bluetooth: time sync, battery level and weather.",
+    "ble.phone_note": "The watch talks to one device at a time. Turn off Bluetooth on the phone before connecting, and turn it back on when done.",
+    "ble.disconnected": "Not connected",
+    "ble.connecting": "Looking for the watch...",
+    "ble.connected": "Connected",
+    "ble.connect": "Connect",
+    "ble.disconnect": "Disconnect",
+    "ble.sync_time": "Sync time",
+    "ble.battery": "Battery",
+    "ble.time_done": "Time synced",
+    "ble.not_found": "Watch not found. Make sure the phone's Bluetooth is off and the watch is nearby.",
+    "ble.weather_title": "Weather",
+    "ble.weather_intro": "Search for a city and send the current weather, an hourly forecast and a 7-day forecast to the watch.",
+    "ble.weather_city": "Selected city:",
+    "ble.weather_send": "Send weather to the watch",
+    "ble.weather_done": "Sent",
+    "ble.no_results": "No results",
+    "ble.weather_credit": "Weather data by Open-Meteo.com",
     "tab.apps": "Apps",
     "apps.title": "App builder",
     "apps.intro": "Build simple Hebrew watch apps from templates - no code. Fill in text, see a live preview, and install.",
@@ -844,6 +884,121 @@ async function ping() {
   }
 }
 
+/* ---------- Wireless (Bluetooth LE) ---------- */
+let bleUp = false;
+let wxPlaces = [];
+
+function loadWxCity() {
+  try { return JSON.parse(localStorage.getItem("wxCity") || "null"); } catch (_) { return null; }
+}
+
+function bleRender(info) {
+  const dot = document.getElementById("bleDot");
+  dot.className = "dot " + (bleUp ? "ok" : "err");
+  document.getElementById("bleStatus").textContent = t(bleUp ? "ble.connected" : "ble.disconnected");
+  if (info !== undefined) document.getElementById("bleInfo").textContent = info;
+  document.getElementById("bleDisconnect").disabled = !bleUp;
+  document.getElementById("bleTime").disabled = !bleUp;
+  const city = loadWxCity();
+  document.getElementById("wxCity").textContent = city ? city.name : "-";
+  document.getElementById("wxSend").disabled = !(bleUp && city);
+}
+
+function bleMsg(text) {
+  document.getElementById("bleMsg").textContent = text;
+}
+
+async function bleConnect() {
+  const btn = document.getElementById("bleConnect");
+  btn.disabled = true;
+  bleMsg("");
+  document.getElementById("bleStatus").textContent = t("ble.connecting");
+  document.getElementById("bleDot").className = "dot warn";
+  try {
+    const r = await invoke("ble_connect");
+    bleUp = true;
+    const bat = r.battery != null ? "  ·  " + t("ble.battery") + ": " + r.battery + "%" : "";
+    bleRender(r.name + "  ·  " + r.address + bat);
+  } catch (e) {
+    bleUp = false;
+    bleRender("");
+    bleMsg(String(e).includes("not found") ? t("ble.not_found") : String(e));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function bleDisconnect() {
+  try { await invoke("ble_disconnect"); } catch (_) {}
+  bleUp = false;
+  bleRender("");
+  bleMsg("");
+}
+
+async function bleCall(fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    bleMsg(String(e));
+    bleUp = await invoke("ble_status").catch(() => false);
+    bleRender();
+    return null;
+  }
+}
+
+async function bleSyncTime() {
+  const r = await bleCall(() => invoke("ble_sync_time"));
+  if (r) bleMsg(t("ble.time_done") + ": " + r);
+}
+
+async function wxSearch() {
+  const q = document.getElementById("wxCityInput").value.trim();
+  const sel = document.getElementById("wxResults");
+  if (!q) return;
+  bleMsg("");
+  try {
+    wxPlaces = await invoke("weather_search", { query: q, lang });
+  } catch (e) {
+    bleMsg(String(e));
+    return;
+  }
+  sel.innerHTML = "";
+  if (wxPlaces.length === 0) {
+    sel.style.display = "none";
+    bleMsg(t("ble.no_results"));
+    return;
+  }
+  wxPlaces.forEach((p, i) => {
+    const o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = p.name + (p.detail ? " (" + p.detail + ")" : "");
+    sel.appendChild(o);
+  });
+  sel.style.display = "";
+  wxPick(0);
+}
+
+function wxPick(i) {
+  const p = wxPlaces[i];
+  if (!p) return;
+  localStorage.setItem("wxCity", JSON.stringify({ name: p.name, lat: p.lat, lon: p.lon }));
+  bleRender();
+}
+
+async function wxSend() {
+  const city = loadWxCity();
+  if (!city) return;
+  const btn = document.getElementById("wxSend");
+  btn.disabled = true;
+  const f = await bleCall(() => invoke("ble_send_weather", { lat: city.lat, lon: city.lon, city: city.name }));
+  if (f) {
+    const today = f.days[0];
+    bleMsg(t("ble.weather_done") + ": " + city.name + "  ·  " + Math.round(f.temp) + "°" +
+      (today ? "  (" + Math.round(today[1]) + "° - " + Math.round(today[2]) + "°)" : ""));
+  }
+  bleRender();
+}
+
 function switchTab(name) {
   document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
@@ -856,6 +1011,8 @@ function switchTab(name) {
   }
   if (name === "apps") {
     initApps();
+  }  if (name === "wireless") {
+    bleRender();
   }
 }
 
@@ -1298,6 +1455,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("installBtn").addEventListener("click", installCompiled);
   document.getElementById("launcherInstall").addEventListener("click", launcherInstall);
   document.getElementById("appBuild").addEventListener("click", buildInstall);
+  document.getElementById("bleConnect").addEventListener("click", bleConnect);
+  document.getElementById("bleDisconnect").addEventListener("click", bleDisconnect);
+  document.getElementById("bleTime").addEventListener("click", bleSyncTime);
+  document.getElementById("wxSearch").addEventListener("click", wxSearch);
+  document.getElementById("wxSend").addEventListener("click", wxSend);
+  document.getElementById("wxCityInput").addEventListener("keydown", (e) => { if (e.key === "Enter") wxSearch(); });
+  document.getElementById("wxResults").addEventListener("change", (e) => wxPick(Number(e.target.value)));
   document.querySelectorAll(".nav-item").forEach((b) => {
     b.addEventListener("click", () => { if (!b.disabled) switchTab(b.dataset.tab); });
   });

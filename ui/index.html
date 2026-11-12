@@ -50,6 +50,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         <span data-i18n="tab.apps"></span>
       </button>
+      <button class="nav-item" data-tab="wireless" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg>
+        <span data-i18n="tab.wireless"></span>
+      </button>
       <div class="nav-sep"></div>
       <div class="nav-hint" data-i18n="nav.hint"></div>
     </aside>
@@ -90,6 +94,53 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span data-i18n="footer.safe"></span>
         </div>
+      </section>
+
+      <section id="tab-wireless" class="panel">
+        <h1 data-i18n="ble.title"></h1>
+        <p class="lead" data-i18n="ble.intro"></p>
+        <div class="info-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span data-i18n="ble.phone_note"></span>
+        </div>
+
+        <div class="card">
+          <div class="status-head">
+            <span class="dot err" id="bleDot"></span>
+            <span class="status-text" id="bleStatus" data-i18n="ble.disconnected"></span>
+          </div>
+          <p class="guide" id="bleInfo"></p>
+        </div>
+        <div class="actions">
+          <button id="bleConnect" class="btn primary" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg>
+            <span data-i18n="ble.connect"></span>
+          </button>
+          <button id="bleDisconnect" class="btn" type="button" disabled>
+            <span data-i18n="ble.disconnect"></span>
+          </button>
+          <button id="bleTime" class="btn" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <span data-i18n="ble.sync_time"></span>
+          </button>
+        </div>
+
+        <h2 class="sub" data-i18n="ble.weather_title"></h2>
+        <p class="lead" data-i18n="ble.weather_intro"></p>
+        <div class="map-search">
+          <input id="wxCityInput" type="text" placeholder="" />
+          <button id="wxSearch" class="btn" type="button" data-i18n="maps.search"></button>
+        </div>
+        <select id="wxResults" class="select" style="display:none"></select>
+        <p class="bg-hint"><span data-i18n="ble.weather_city"></span> <b id="wxCity"></b></p>
+        <div class="actions">
+          <button id="wxSend" class="btn primary" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+            <span data-i18n="ble.weather_send"></span>
+          </button>
+        </div>
+        <p id="bleMsg" class="coming"></p>
+        <p class="bg-hint" data-i18n="ble.weather_credit"></p>
       </section>
 
       <section id="tab-partition" class="panel">

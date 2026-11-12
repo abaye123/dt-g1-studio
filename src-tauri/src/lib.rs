@@ -12,6 +12,8 @@ mod osmlabels;
 mod osmlang;
 mod pkgsdb;
 mod resources;
+mod weather;
+mod wireless;
 
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
@@ -1084,6 +1086,52 @@ fn launcher_install(
     Ok(InstallResult { package_id: pid.into(), menu_changed, backups })
 }
 
+/* ---------- Wireless (Bluetooth LE) ---------- */
+
+#[tauri::command]
+async fn ble_connect() -> Result<wireless::LinkInfo, String> {
+    wireless::connect().await
+}
+
+#[tauri::command]
+async fn ble_disconnect() -> Result<(), String> {
+    wireless::disconnect().await
+}
+
+#[tauri::command]
+async fn ble_status() -> bool {
+    wireless::is_connected().await
+}
+
+#[tauri::command]
+async fn ble_battery() -> Result<u8, String> {
+    wireless::battery().await
+}
+
+#[tauri::command]
+async fn ble_sync_time() -> Result<String, String> {
+    wireless::sync_time().await
+}
+
+#[tauri::command]
+async fn weather_search(query: String, lang: String) -> Result<Vec<weather::Place>, String> {
+    tauri::async_runtime::spawn_blocking(move || weather::search_city(&query, &lang))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Fetch the forecast for (lat, lon) and send it to the watch under `city`.
+#[tauri::command]
+async fn ble_send_weather(lat: f64, lon: f64, city: String) -> Result<weather::Forecast, String> {
+    let f = tauri::async_runtime::spawn_blocking(move || weather::fetch(lat, lon))
+        .await
+        .map_err(|e| e.to_string())??;
+    for (cmd, body) in weather::payloads(&f, &city) {
+        wireless::request(wireless::SVC_SET, cmd, &body).await?;
+    }
+    Ok(f)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(Demo::default())
@@ -1116,7 +1164,14 @@ pub fn run() {
             app_build,
             app_install,
             launcher_status,
-            launcher_install
+            launcher_install,
+            ble_connect,
+            ble_disconnect,
+            ble_status,
+            ble_battery,
+            ble_sync_time,
+            weather_search,
+            ble_send_weather
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
