@@ -687,3 +687,14 @@ html[dir="rtl"] .switch input:checked + .slider::before { transform: translateX(
 /* checkbox with label (map compile options) */
 .check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; }
 .check input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+
+/* Wireless: alarms */
+.alarm-list { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 16px; }
+.alarm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--border, #ddd); border-radius: 10px; }
+.alarm-row input[type="time"] { font-size: 1.1em; }
+.alarm-days { display: flex; gap: 4px; flex-wrap: wrap; }
+.alarm-days label { display: inline-flex; align-items: center; justify-content: center; min-width: 28px;
+  height: 28px; border-radius: 14px; border: 1px solid var(--border, #ccc); cursor: pointer; user-select: none; font-size: .85em; }
+.alarm-days input { display: none; }
+.alarm-days label.on { background: var(--accent, #2b7cff); color: var(--accent-ink, #fff); border-color: transparent; }

@@ -1114,6 +1114,71 @@ async fn ble_sync_time() -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn ble_set_language(tag: String) -> Result<(), String> {
+    wireless::set_language(&tag).await
+}
+
+#[tauri::command]
+async fn ble_set_step_goal(steps: u32) -> Result<(), String> {
+    wireless::set_step_goal(steps).await
+}
+
+#[tauri::command]
+async fn ble_activity() -> Result<wireless::Activity, String> {
+    wireless::activity().await
+}
+
+#[tauri::command]
+async fn ble_find_watch() -> Result<(), String> {
+    wireless::find_watch().await
+}
+
+#[tauri::command]
+async fn ble_get_alarms() -> Result<Vec<wireless::Alarm>, String> {
+    wireless::get_alarms().await
+}
+
+#[tauri::command]
+async fn ble_set_alarms(alarms: Vec<wireless::Alarm>) -> Result<(), String> {
+    wireless::set_alarms(&alarms).await
+}
+
+#[tauri::command]
+async fn ble_set_raise_to_wake(on: bool) -> Result<(), String> {
+    wireless::set_raise_to_wake(on).await
+}
+
+#[tauri::command]
+async fn ble_set_dnd(on: bool, start: String, end: String) -> Result<(), String> {
+    let (sh, sm) = parse_hm(&start)?;
+    let (eh, em) = parse_hm(&end)?;
+    wireless::set_dnd(on, sh, sm, eh, em).await
+}
+
+#[tauri::command]
+async fn ble_set_heart_monitor(on: bool, start: String, end: String, interval: u8) -> Result<(), String> {
+    let (sh, sm) = parse_hm(&start)?;
+    let (eh, em) = parse_hm(&end)?;
+    wireless::set_heart_monitor(on, sh, sm, eh, em, interval).await
+}
+
+#[tauri::command]
+async fn ble_set_units(imperial: bool, fahrenheit: bool) -> Result<(), String> {
+    wireless::set_units(imperial, fahrenheit).await
+}
+
+/// "HH:MM" -> (hour, minute).
+fn parse_hm(s: &str) -> Result<(u8, u8), String> {
+    let (h, m) = s.split_once(':').ok_or("invalid time")?;
+    let h: u8 = h.trim().parse().map_err(|_| "invalid time")?;
+    let m: u8 = m.trim().parse().map_err(|_| "invalid time")?;
+    if h > 23 || m > 59 {
+        return Err("invalid time".into());
+    }
+    Ok((h, m))
+}
+
+#[tauri::command]
 async fn weather_search(query: String, lang: String) -> Result<Vec<weather::Place>, String> {
     tauri::async_runtime::spawn_blocking(move || weather::search_city(&query, &lang))
         .await
@@ -1171,7 +1236,17 @@ pub fn run() {
             ble_battery,
             ble_sync_time,
             weather_search,
-            ble_send_weather
+            ble_send_weather,
+            ble_set_language,
+            ble_set_step_goal,
+            ble_activity,
+            ble_find_watch,
+            ble_get_alarms,
+            ble_set_alarms,
+            ble_set_raise_to_wake,
+            ble_set_dnd,
+            ble_set_heart_monitor,
+            ble_set_units
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

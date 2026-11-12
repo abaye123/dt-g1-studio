@@ -246,6 +246,124 @@ pub async fn sync_time() -> Result<String, String> {
     Ok(now.format("%H:%M:%S").to_string())
 }
 
+/// Watch UI language (8001/0012), a BCP-47 tag such as "he-IL" or "en-US".
+pub async fn set_language(tag: &str) -> Result<(), String> {
+    if tag.is_empty() || tag.len() > 16 || !tag.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-') {
+        return Err("invalid language tag".into());
+    }
+    request(SVC_SET, 0x0012, tag.as_bytes()).await.map(|_| ())
+}
+
+/// Daily step goal (8001/0003, u32 LE).
+pub async fn set_step_goal(steps: u32) -> Result<(), String> {
+    request(SVC_SET, 0x0003, &steps.to_le_bytes()).await.map(|_| ())
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct Activity {
+    pub steps: u32,
+    /// Calories in kcal.
+    pub calories: f64,
+    /// Distance in meters.
+    pub distance: u32,
+}
+
+/// Today's totals (8004/000a with body 03): steps, calories (cal), distance (m),
+/// each u32 LE.
+pub fn parse_activity(b: &[u8]) -> Option<Activity> {
+    let u = |i: usize| b.get(i..i + 4).map(|x| u32::from_le_bytes([x[0], x[1], x[2], x[3]]));
+    Some(Activity { steps: u(0)?, calories: u(4)? as f64 / 1000.0, distance: u(8)? })
+}
+
+pub async fn activity() -> Result<Activity, String> {
+    let b = request(0x8004, 0x000a, &[0x03]).await?;
+    parse_activity(&b).ok_or_else(|| "unexpected activity reply".into())
+}
+
+/// Make the watch ring/vibrate (8003/0000).
+pub async fn find_watch() -> Result<(), String> {
+    request(0x8003, 0x0000, &[]).await.map(|_| ())
+}
+
+/// One of the watch's 5 alarm slots. `days` is a bit mask, bit 0 = Monday ...
+/// bit 6 = Sunday; 0 means "once".
+#[derive(Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
+pub struct Alarm {
+    pub hour: u8,
+    pub minute: u8,
+    pub days: u8,
+    pub enabled: bool,
+}
+
+pub const ALARM_SLOTS: usize = 5;
+
+/// Alarm table: 5 records of `hour minute days 01 enabled` (the 4th byte is
+/// always 1 when WearPro writes).
+pub fn parse_alarms(b: &[u8]) -> Vec<Alarm> {
+    b.chunks_exact(5)
+        .take(ALARM_SLOTS)
+        .map(|r| Alarm { hour: r[0], minute: r[1], days: r[2] & 0x7f, enabled: r[4] != 0 })
+        .collect()
+}
+
+pub fn encode_alarms(alarms: &[Alarm]) -> Result<Vec<u8>, String> {
+    let mut out = Vec::with_capacity(ALARM_SLOTS * 5);
+    for i in 0..ALARM_SLOTS {
+        let a = alarms.get(i).cloned().unwrap_or(Alarm { hour: 0, minute: 0, days: 0, enabled: false });
+        if a.hour > 23 || a.minute > 59 {
+            return Err("invalid alarm time".into());
+        }
+        out.extend([a.hour, a.minute, a.days & 0x7f, 1, a.enabled as u8]);
+    }
+    Ok(out)
+}
+
+/// Read the alarms from the settings snapshot (8002/0002, first 25 bytes).
+pub async fn get_alarms() -> Result<Vec<Alarm>, String> {
+    let b = request(SVC_GET, 0x0002, &[]).await?;
+    if b.len() < ALARM_SLOTS * 5 {
+        return Err("unexpected settings reply".into());
+    }
+    Ok(parse_alarms(&b[..ALARM_SLOTS * 5]))
+}
+
+pub async fn set_alarms(alarms: &[Alarm]) -> Result<(), String> {
+    request(SVC_SET, 0x0002, &encode_alarms(alarms)?).await.map(|_| ())
+}
+
+/// Wake the screen when the wrist is raised (8001/000c).
+pub async fn set_raise_to_wake(on: bool) -> Result<(), String> {
+    let v = on as u8;
+    request(SVC_SET, 0x000c, &[0, v, v]).await.map(|_| ())
+}
+
+fn check_hm(h: u8, m: u8) -> Result<(), String> {
+    if h > 23 || m > 59 { Err("invalid time".into()) } else { Ok(()) }
+}
+
+/// Do-not-disturb window (8001/0008): on, start h:m, end h:m.
+pub async fn set_dnd(on: bool, sh: u8, sm: u8, eh: u8, em: u8) -> Result<(), String> {
+    check_hm(sh, sm)?;
+    check_hm(eh, em)?;
+    request(SVC_SET, 0x0008, &[on as u8, sh, sm, eh, em]).await.map(|_| ())
+}
+
+/// Automatic heart-rate monitoring (8001/000a): on, start h:m, end h:m
+/// (00:00-00:00 = all day), interval in minutes.
+pub async fn set_heart_monitor(on: bool, sh: u8, sm: u8, eh: u8, em: u8, interval: u8) -> Result<(), String> {
+    check_hm(sh, sm)?;
+    check_hm(eh, em)?;
+    if interval == 0 {
+        return Err("invalid interval".into());
+    }
+    request(SVC_SET, 0x000a, &[on as u8, sh, sm, eh, em, interval]).await.map(|_| ())
+}
+
+/// Units (8001/0000): imperial distance, Fahrenheit temperature.
+pub async fn set_units(imperial: bool, fahrenheit: bool) -> Result<(), String> {
+    request(SVC_SET, 0x0000, &[imperial as u8, fahrenheit as u8]).await.map(|_| ())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -265,6 +383,22 @@ mod tests {
         assert_eq!(hex(&f), "55008d04018012004700050068652d494c");
         let r = decode_frame(&[0xaa, 0x10, 0x92, 0x04, 0x02, 0x80, 0x03, 0x00, 0x90, 0x00, 0x02, 0x00, 0x64, 0x64]).unwrap();
         assert_eq!(r, Reply { seq: 0x0492, svc: 0x8002, cmd: 0x0003, body: vec![100, 100] });
+    }
+
+    #[test]
+    fn activity_matches_capture() {
+        let b = [0xef, 0x08, 0, 0, 0x57, 0xdf, 0, 0, 0xee, 0x05, 0, 0];
+        assert_eq!(parse_activity(&b), Some(Activity { steps: 2287, calories: 57.175, distance: 1518 }));
+    }
+
+    #[test]
+    fn alarms_roundtrip_capture() {
+        let b = [7, 10, 0x5f, 1, 1, 4, 10, 0x10, 1, 1, 8, 20, 0x5f, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0];
+        let a = parse_alarms(&b);
+        assert_eq!(a.len(), 5);
+        assert_eq!(a[1], Alarm { hour: 4, minute: 10, days: 0x10, enabled: true });
+        assert!(!a[3].enabled);
+        assert_eq!(encode_alarms(&a).unwrap(), b.to_vec());
     }
 
     #[test]

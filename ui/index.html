@@ -123,6 +123,91 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             <span data-i18n="ble.sync_time"></span>
           </button>
+          <button id="bleFind" class="btn" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span data-i18n="ble.find"></span>
+          </button>
+        </div>
+
+        <h2 class="sub" data-i18n="ble.activity_title"></h2>
+        <div class="actions">
+          <button id="bleActivity" class="btn" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span data-i18n="ble.activity_read"></span>
+          </button>
+        </div>
+        <p class="bg-hint" id="bleActivityOut"></p>
+
+        <h2 class="sub" data-i18n="ble.settings_title"></h2>
+        <div class="map-form">
+          <label data-i18n="ble.language"></label>
+          <select id="bleLang" class="select">
+            <option value="he-IL">עברית</option>
+            <option value="en-US">English</option>
+          </select>
+          <button id="bleLangSet" class="btn" type="button" disabled data-i18n="ble.apply"></button>
+        </div>
+        <div class="map-form">
+          <label data-i18n="ble.step_goal"></label>
+          <input id="bleGoal" type="number" min="1000" max="50000" step="500" value="8000" />
+          <button id="bleGoalSet" class="btn" type="button" disabled data-i18n="ble.apply"></button>
+        </div>
+
+        <h2 class="sub" data-i18n="ble.alarms_title"></h2>
+        <div class="actions">
+          <button id="alarmLoad" class="btn" type="button" disabled data-i18n="ble.alarms_load"></button>
+          <button id="alarmSave" class="btn primary" type="button" disabled data-i18n="ble.alarms_save"></button>
+        </div>
+        <div id="alarmList" class="alarm-list"></div>
+
+        <h2 class="sub" data-i18n="ble.more_title"></h2>
+        <div class="map-form">
+          <label data-i18n="ble.raise"></label>
+          <select id="raiseSel" class="select">
+            <option value="1" data-i18n="ble.on"></option>
+            <option value="0" data-i18n="ble.off" selected></option>
+          </select>
+          <button id="raiseSet" class="btn ble-need" type="button" disabled data-i18n="ble.apply"></button>
+        </div>
+        <div class="map-form">
+          <label data-i18n="ble.dnd"></label>
+          <select id="dndSel" class="select">
+            <option value="1" data-i18n="ble.on"></option>
+            <option value="0" data-i18n="ble.off" selected></option>
+          </select>
+          <input id="dndFrom" type="time" value="23:00" />
+          <input id="dndTo" type="time" value="07:00" />
+          <button id="dndSet" class="btn ble-need" type="button" disabled data-i18n="ble.apply"></button>
+        </div>
+        <div class="map-form">
+          <label data-i18n="ble.hr"></label>
+          <select id="hrSel" class="select">
+            <option value="1" data-i18n="ble.on"></option>
+            <option value="0" data-i18n="ble.off"></option>
+          </select>
+          <input id="hrFrom" type="time" value="00:00" />
+          <input id="hrTo" type="time" value="00:00" />
+          <select id="hrInt" class="select">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="60">60</option>
+          </select>
+          <button id="hrSet" class="btn ble-need" type="button" disabled data-i18n="ble.apply"></button>
+        </div>
+        <p class="bg-hint" data-i18n="ble.hr_hint"></p>
+        <div class="map-form">
+          <label data-i18n="ble.units"></label>
+          <select id="unitDist" class="select">
+            <option value="0" data-i18n="ble.metric"></option>
+            <option value="1" data-i18n="ble.imperial"></option>
+          </select>
+          <select id="unitTemp" class="select">
+            <option value="0">°C</option>
+            <option value="1">°F</option>
+          </select>
+          <button id="unitSet" class="btn ble-need" type="button" disabled data-i18n="ble.apply"></button>
         </div>
 
         <h2 class="sub" data-i18n="ble.weather_title"></h2>

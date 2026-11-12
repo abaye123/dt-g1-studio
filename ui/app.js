@@ -123,6 +123,34 @@ const I18N = {
     "ble.battery": "סוללה",
     "ble.time_done": "השעה סונכרנה",
     "ble.not_found": "השעון לא נמצא. ודא שה-Bluetooth בטלפון כבוי ושהשעון קרוב.",
+    "ble.activity_title": "פעילות היום",
+    "ble.activity_read": "קרא מהשעון",
+    "ble.steps": "צעדים",
+    "ble.distance": "מרחק",
+    "ble.calories": "קלוריות",
+    "ble.settings_title": "הגדרות שעון",
+    "ble.language": "שפת השעון",
+    "ble.step_goal": "יעד צעדים יומי",
+    "ble.apply": "החל",
+    "ble.applied": "עודכן בשעון",
+    "ble.find": "מצא את השעון",
+    "ble.find_done": "השעון אמור לרטוט עכשיו",
+    "ble.alarms_title": "שעונים מעוררים",
+    "ble.alarms_load": "טען מהשעון",
+    "ble.alarms_save": "שמור בשעון",
+    "ble.alarms_saved": "השעונים המעוררים נשמרו בשעון",
+    "ble.alarm_on": "פעיל",
+    "ble.days_short": "ב,ג,ד,ה,ו,ש,א",
+    "ble.more_title": "הגדרות נוספות",
+    "ble.raise": "הדלקת מסך בהרמת יד",
+    "ble.dnd": "נא לא להפריע",
+    "ble.hr": "מדידת דופק אוטומטית",
+    "ble.hr_hint": "טווח שעות 00:00 עד 00:00 = כל היממה. המספר האחרון הוא תדירות המדידה בדקות.",
+    "ble.units": "יחידות",
+    "ble.metric": "מטרי",
+    "ble.imperial": "אימפריאלי",
+    "ble.on": "פעיל",
+    "ble.off": "כבוי",
     "ble.weather_title": "מזג אוויר",
     "ble.weather_intro": "חפש עיר ושלח לשעון את מזג האוויר הנוכחי, תחזית שעתית ותחזית ל-7 ימים.",
     "ble.weather_city": "עיר נבחרת:",
@@ -281,6 +309,34 @@ const I18N = {
     "ble.battery": "Battery",
     "ble.time_done": "Time synced",
     "ble.not_found": "Watch not found. Make sure the phone's Bluetooth is off and the watch is nearby.",
+    "ble.activity_title": "Today's activity",
+    "ble.activity_read": "Read from the watch",
+    "ble.steps": "Steps",
+    "ble.distance": "Distance",
+    "ble.calories": "Calories",
+    "ble.settings_title": "Watch settings",
+    "ble.language": "Watch language",
+    "ble.step_goal": "Daily step goal",
+    "ble.apply": "Apply",
+    "ble.applied": "Updated on the watch",
+    "ble.find": "Find the watch",
+    "ble.find_done": "The watch should vibrate now",
+    "ble.alarms_title": "Alarms",
+    "ble.alarms_load": "Load from the watch",
+    "ble.alarms_save": "Save to the watch",
+    "ble.alarms_saved": "Alarms saved to the watch",
+    "ble.alarm_on": "On",
+    "ble.days_short": "M,T,W,T,F,S,S",
+    "ble.more_title": "More settings",
+    "ble.raise": "Raise to wake",
+    "ble.dnd": "Do not disturb",
+    "ble.hr": "Automatic heart rate",
+    "ble.hr_hint": "A range of 00:00 to 00:00 means all day. The last number is the interval in minutes.",
+    "ble.units": "Units",
+    "ble.metric": "Metric",
+    "ble.imperial": "Imperial",
+    "ble.on": "On",
+    "ble.off": "Off",
     "ble.weather_title": "Weather",
     "ble.weather_intro": "Search for a city and send the current weather, an hourly forecast and a 7-day forecast to the watch.",
     "ble.weather_city": "Selected city:",
@@ -899,6 +955,8 @@ function bleRender(info) {
   if (info !== undefined) document.getElementById("bleInfo").textContent = info;
   document.getElementById("bleDisconnect").disabled = !bleUp;
   document.getElementById("bleTime").disabled = !bleUp;
+  for (const id of ["bleActivity", "bleLangSet", "bleGoalSet", "bleFind", "alarmLoad", "alarmSave"]) document.getElementById(id).disabled = !bleUp;
+  document.querySelectorAll(".ble-need").forEach((b) => { b.disabled = !bleUp; });
   const city = loadWxCity();
   document.getElementById("wxCity").textContent = city ? city.name : "-";
   document.getElementById("wxSend").disabled = !(bleUp && city);
@@ -919,6 +977,7 @@ async function bleConnect() {
     bleUp = true;
     const bat = r.battery != null ? "  ·  " + t("ble.battery") + ": " + r.battery + "%" : "";
     bleRender(r.name + "  ·  " + r.address + bat);
+    bleActivity().then(alarmLoad);
   } catch (e) {
     bleUp = false;
     bleRender("");
@@ -949,6 +1008,105 @@ async function bleCall(fn) {
 async function bleSyncTime() {
   const r = await bleCall(() => invoke("ble_sync_time"));
   if (r) bleMsg(t("ble.time_done") + ": " + r);
+}
+
+async function bleActivity() {
+  const a = await bleCall(() => invoke("ble_activity"));
+  if (!a) return;
+  const km = (a.distance / 1000).toFixed(2);
+  document.getElementById("bleActivityOut").textContent =
+    t("ble.steps") + ": " + a.steps.toLocaleString() + "  ·  " +
+    t("ble.distance") + ": " + km + " km  ·  " +
+    t("ble.calories") + ": " + Math.round(a.calories) + " kcal";
+}
+
+async function bleSetLanguage() {
+  const tag = document.getElementById("bleLang").value;
+  const ok = await bleCall(async () => { await invoke("ble_set_language", { tag }); return true; });
+  if (ok) bleMsg(t("ble.applied"));
+}
+
+async function bleSetGoal() {
+  const steps = Math.round(Number(document.getElementById("bleGoal").value));
+  if (!(steps >= 100 && steps <= 100000)) return;
+  localStorage.setItem("bleGoal", String(steps));
+  const ok = await bleCall(async () => { await invoke("ble_set_step_goal", { steps }); return true; });
+  if (ok) bleMsg(t("ble.applied") + ": " + steps.toLocaleString());
+}
+
+/* Alarms: 5 slots, days bit 0 = Monday ... bit 6 = Sunday. */
+let alarms = [];
+
+function renderAlarms() {
+  const list = document.getElementById("alarmList");
+  list.innerHTML = "";
+  const names = t("ble.days_short").split(",");
+  // Display order: Sunday first in Hebrew, Monday first in English.
+  const order = lang === "he" ? [6, 0, 1, 2, 3, 4, 5] : [0, 1, 2, 3, 4, 5, 6];
+  const heNames = ["ב", "ג", "ד", "ה", "ו", "ש", "א"];
+  alarms.forEach((a, i) => {
+    const row = document.createElement("div");
+    row.className = "alarm-row";
+    const time = document.createElement("input");
+    time.type = "time";
+    time.value = String(a.hour).padStart(2, "0") + ":" + String(a.minute).padStart(2, "0");
+    time.addEventListener("change", () => {
+      const [h, m] = time.value.split(":").map(Number);
+      a.hour = h || 0; a.minute = m || 0;
+    });
+    row.appendChild(time);
+    const days = document.createElement("div");
+    days.className = "alarm-days";
+    for (const bit of order) {
+      const l = document.createElement("label");
+      l.textContent = lang === "he" ? heNames[bit] : names[bit];
+      if (a.days & (1 << bit)) l.classList.add("on");
+      l.addEventListener("click", () => {
+        a.days ^= 1 << bit;
+        l.classList.toggle("on", !!(a.days & (1 << bit)));
+      });
+      days.appendChild(l);
+    }
+    row.appendChild(days);
+    const sw = document.createElement("label");
+    sw.className = "switch";
+    sw.title = t("ble.alarm_on");
+    sw.innerHTML = '<input type="checkbox" /><span class="slider"></span>';
+    const cb = sw.querySelector("input");
+    cb.checked = !!a.enabled;
+    cb.addEventListener("change", () => { a.enabled = cb.checked; });
+    row.appendChild(sw);
+    list.appendChild(row);
+  });
+}
+
+async function alarmLoad() {
+  const r = await bleCall(() => invoke("ble_get_alarms"));
+  if (r) { alarms = r; renderAlarms(); }
+}
+
+async function alarmSave() {
+  if (alarms.length === 0) return;
+  const ok = await bleCall(async () => { await invoke("ble_set_alarms", { alarms }); return true; });
+  if (ok) bleMsg(t("ble.alarms_saved"));
+}
+
+async function bleFind() {
+  const ok = await bleCall(async () => { await invoke("ble_find_watch"); return true; });
+  if (ok) bleMsg(t("ble.find_done"));
+}
+
+function remember(ids) {
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    try { const v = localStorage.getItem("ble." + id); if (v !== null) el.value = v; } catch (_) {}
+    el.addEventListener("change", () => { try { localStorage.setItem("ble." + id, el.value); } catch (_) {} });
+  }
+}
+
+async function bleApply(cmd, args) {
+  const ok = await bleCall(async () => { await invoke(cmd, args); return true; });
+  if (ok) bleMsg(t("ble.applied"));
 }
 
 async function wxSearch() {
@@ -1459,6 +1617,24 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("bleDisconnect").addEventListener("click", bleDisconnect);
   document.getElementById("bleTime").addEventListener("click", bleSyncTime);
   document.getElementById("wxSearch").addEventListener("click", wxSearch);
+  document.getElementById("bleActivity").addEventListener("click", bleActivity);
+  document.getElementById("bleFind").addEventListener("click", bleFind);
+  document.getElementById("alarmLoad").addEventListener("click", alarmLoad);
+  document.getElementById("alarmSave").addEventListener("click", alarmSave);
+  remember(["raiseSel", "dndSel", "dndFrom", "dndTo", "hrSel", "hrFrom", "hrTo", "hrInt", "unitDist", "unitTemp"]);
+  const v = (id) => document.getElementById(id).value;
+  document.getElementById("raiseSet").addEventListener("click", () =>
+    bleApply("ble_set_raise_to_wake", { on: v("raiseSel") === "1" }));
+  document.getElementById("dndSet").addEventListener("click", () =>
+    bleApply("ble_set_dnd", { on: v("dndSel") === "1", start: v("dndFrom"), end: v("dndTo") }));
+  document.getElementById("hrSet").addEventListener("click", () =>
+    bleApply("ble_set_heart_monitor", { on: v("hrSel") === "1", start: v("hrFrom"), end: v("hrTo"), interval: Number(v("hrInt")) }));
+  document.getElementById("unitSet").addEventListener("click", () =>
+    bleApply("ble_set_units", { imperial: v("unitDist") === "1", fahrenheit: v("unitTemp") === "1" }));
+  document.getElementById("bleLangSet").addEventListener("click", bleSetLanguage);
+  document.getElementById("bleGoalSet").addEventListener("click", bleSetGoal);
+  { const g = localStorage.getItem("bleGoal"); if (g) document.getElementById("bleGoal").value = g; }
+  document.getElementById("bleLang").value = lang === "he" ? "he-IL" : "en-US";
   document.getElementById("wxSend").addEventListener("click", wxSend);
   document.getElementById("wxCityInput").addEventListener("keydown", (e) => { if (e.key === "Enter") wxSearch(); });
   document.getElementById("wxResults").addEventListener("change", (e) => wxPick(Number(e.target.value)));
