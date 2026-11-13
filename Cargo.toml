@@ -13,3 +13,22 @@ authors = ["abaye"]
 [profile.release]
 strip = true
 lto = true
+
+# The audio codecs are far too slow unoptimized; build them with optimizations
+# even in dev builds so music encoding stays fast.
+[profile.dev.package.mp3lame-sys]
+opt-level = 3
+[profile.dev.package.symphonia-core]
+opt-level = 3
+[profile.dev.package.symphonia-bundle-mp3]
+opt-level = 3
+[profile.dev.package.symphonia-bundle-flac]
+opt-level = 3
+[profile.dev.package.symphonia-codec-aac]
+opt-level = 3
+[profile.dev.package.symphonia-codec-vorbis]
+opt-level = 3
+[profile.dev.package.symphonia-codec-alac]
+opt-level = 3
+[profile.dev.package.symphonia-codec-pcm]
+opt-level = 3

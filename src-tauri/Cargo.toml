@@ -31,3 +31,8 @@ tokio = { version = "1", features = ["sync", "time"] }
 uuid = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 iana-time-zone = "0.1"
+lofty = "0.25.5"
+symphonia = { version = "0.5", features = ["all"] }
+mp3lame-encoder = "0.3.0"
+fs4 = "1.1.0"
+tauri-plugin-dialog = "2"

@@ -8,6 +8,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 mod appbuild;
 mod contours;
 mod mapcompile;
+mod music;
 mod osmlabels;
 mod osmlang;
 mod pkgsdb;
@@ -1197,8 +1198,140 @@ async fn ble_send_weather(lat: f64, lon: f64, city: String) -> Result<weather::F
     Ok(f)
 }
 
+/* ---------- Music library ---------- */
+
+/// Size of the watch's hidden partition, used for free space in demo mode.
+const DEMO_TOTAL: u64 = 350 * 1024 * 1024;
+const DEMO_FREE: u64 = 290 * 1024 * 1024;
+
+/// The hidden partition root (or the demo root), without exposing it.
+fn music_root(state: &State<'_, Demo>) -> Result<(PathBuf, bool), String> {
+    if let Some(d) = demo_root(state) {
+        return Ok((d, true));
+    }
+    partition::find()
+        .map(|r| (r, false))
+        .ok_or_else(|| "partition_not_mounted".to_string())
+}
+
+/// (free, total) bytes of the watch drive. Demo mode simulates the real
+/// partition size so the size accounting behaves the same.
+fn music_space(root: &Path, demo: bool) -> (u64, u64) {
+    if demo {
+        let used = music::dir_size(&music::music_dir(root));
+        return (DEMO_FREE.saturating_sub(used), DEMO_TOTAL);
+    }
+    (
+        fs4::available_space(root).unwrap_or(0),
+        fs4::total_space(root).unwrap_or(0),
+    )
+}
+
+#[derive(Serialize)]
+struct MusicWatch {
+    tracks: Vec<music::IndexTrack>,
+    playlists: Vec<music::Playlist>,
+    library_bytes: u64,
+    free: u64,
+    total: u64,
+    recycle_bytes: u64,
+}
+
+/// Show a folder picker and return the chosen folder.
+#[tauri::command]
+async fn music_pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    tauri::async_runtime::spawn_blocking(move || {
+        app.dialog()
+            .file()
+            .blocking_pick_folder()
+            .and_then(|p| p.into_path().ok())
+            .map(|p| p.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+/// Scan a library folder: tags, duration, covers and estimated sizes. Emits
+/// `music-scan` events `{done, total}`.
+#[tauri::command]
+async fn music_scan(app: tauri::AppHandle, root: String) -> Result<music::ScanOut, String> {
+    use tauri::Emitter;
+    tauri::async_runtime::spawn_blocking(move || {
+        music::scan(Path::new(&root), &|done, total| {
+            let _ = app.emit("music-scan", serde_json::json!({ "done": done, "total": total }));
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// The library currently on the watch (index.json) and the drive's space.
+#[tauri::command]
+async fn music_watch(state: State<'_, Demo>) -> Result<MusicWatch, String> {
+    let (root, demo) = music_root(&state)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let index = music::read_index(&root);
+        let (free, total) = music_space(&root, demo);
+        MusicWatch {
+            tracks: index.tracks,
+            playlists: index.playlists,
+            library_bytes: music::dir_size(&music::music_dir(&root)),
+            free,
+            total,
+            recycle_bytes: music::dir_size(&music::recycle_dir(&root)),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+/// Encode the selected tracks (from the last scan) and sync them to the watch.
+/// Emits `music-progress` events. Fails with `no_space:<needed>:<available>`
+/// when the selection does not fit.
+#[tauri::command]
+async fn music_sync(
+    app: tauri::AppHandle,
+    state: State<'_, Demo>,
+    ids: Vec<String>,
+) -> Result<music::SyncOut, String> {
+    use tauri::Emitter;
+    let (root, demo) = music_root(&state)?;
+    let cache = data_root(&app).join("music-cache");
+    tauri::async_runtime::spawn_blocking(move || {
+        let r2 = root.clone();
+        music::sync(
+            &root,
+            &cache,
+            &ids,
+            &move || music_space(&r2, demo).0,
+            &|p| {
+                let _ = app.emit("music-progress", p);
+            },
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Stop a running scan or sync at the next file.
+#[tauri::command]
+fn music_cancel() {
+    music::cancel();
+}
+
+/// Empty `$RECYCLE.BIN` on the watch drive. Returns the bytes freed.
+#[tauri::command]
+async fn music_empty_recycle(state: State<'_, Demo>) -> Result<u64, String> {
+    let (root, _) = music_root(&state)?;
+    tauri::async_runtime::spawn_blocking(move || music::empty_recycle(&root))
+        .await
+        .map_err(|e| e.to_string())
+}
+
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(Demo::default())
         .invoke_handler(tauri::generate_handler![
             detect_connection,
@@ -1246,7 +1379,13 @@ pub fn run() {
             ble_set_raise_to_wake,
             ble_set_dnd,
             ble_set_heart_monitor,
-            ble_set_units
+            ble_set_units,
+            music_pick_folder,
+            music_scan,
+            music_watch,
+            music_sync,
+            music_cancel,
+            music_empty_recycle
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

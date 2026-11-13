@@ -185,6 +185,46 @@ const I18N = {
     "apps.restart": "הותקן. הפעל מחדש את השעון כדי לראות את האפליקציה.",
     "apps.need": "חבר את השעון (או הפעל מצב דמו) כדי להתקין.",
     "apps.built_demo": "נבנה בהצלחה (מצב דמו - לא הותקן בשעון).",
+    "tab.music": "מוזיקה",
+    "music.title": "ספריית מוזיקה",
+    "music.intro": "בחר תיקיית מוזיקה במחשב, סמן מה להעביר, והכלי ימיר ל-MP3 64kbps ויסנכרן לשעון (למחיצה המוסתרת, תחת data/mass/music). אפליקציית המוזיקה בשעון קוראת משם.",
+    "music.folder": "תיקיית הספרייה",
+    "music.no_folder": "לא נבחרה תיקייה",
+    "music.pick": "בחר תיקייה",
+    "music.scan": "סרוק",
+    "music.scanning": "סורק... {n} מתוך {m}",
+    "music.scanned": "נמצאו {n} שירים.",
+    "music.skipped": "{n} קבצים לא נקראו.",
+    "music.empty": "לא נמצאו קובצי שמע בתיקייה.",
+    "music.select_all": "סמן הכל",
+    "music.select_none": "נקה סימון",
+    "music.bar": "נבחרו {sel} מתוך {avail} פנויים למוזיקה",
+    "music.bar_over": "הבחירה גדולה מהמקום הפנוי בשעון (נשמר מרווח של 10MB). הסר שירים.",
+    "music.sync": "סנכרן לשעון",
+    "music.cancel": "עצור",
+    "music.cancelled": "הסנכרון נעצר. מה שכבר הועתק נשמר.",
+    "music.phase_encode": "ממיר {n} מתוך {m}: {name}",
+    "music.phase_copy": "מעתיק לשעון {n} מתוך {m}: {name}",
+    "music.phase_delete": "מוחק מהשעון {n} מתוך {m}",
+    "music.phase_index": "כותב את רשימת השירים...",
+    "music.done": "הסנכרון הושלם: {n} שירים בשעון. נכתבו {w}, נמחקו {d} קבצים. פנוי עכשיו: {f}.",
+    "music.failed": "לא הומרו ({n}):",
+    "music.no_space": "אין מספיק מקום בשעון: צריך {need}, זמין {avail}.",
+    "music.scan_first": "סרוק את התיקייה קודם.",
+    "music.need": "חבר את השעון (או הפעל מצב הדגמה) כדי לסנכרן.",
+    "music.need_mount": "השעון במצב טעינה, והמחיצה המוסתרת עוד לא מחוברת למחשב.",
+    "music.mount": "חבר את המחיצה",
+    "music.on_watch": "בשעון עכשיו",
+    "music.watch_summary": "{n} שירים, {size}.",
+    "music.drive_free": "פנוי בכונן: {free} מתוך {total}.",
+    "music.watch_empty": "אין עדיין מוזיקה בשעון.",
+    "music.on_watch_mark": "בשעון",
+    "music.root_folder": "(שורש התיקייה)",
+    "music.recycle": "סל המחזור בכונן השעון תופס {size}.",
+    "music.recycle_empty": "רוקן סל מחזור",
+    "music.recycle_confirm": "למחוק לצמיתות את תוכן סל המחזור בכונן השעון ({size})?",
+    "music.recycle_done": "סל המחזור רוקן. התפנו {size}.",
+    "music.playlists": "רשימות השמעה: {n}",
     "soon": "בבנייה. יתווסף בקרוב.",
     "footer.safe": "קריאה בלבד ומעברי-מצב בלבד. אין כתיבה או מחיקה לקושחה.",
   },
@@ -371,6 +411,46 @@ const I18N = {
     "apps.restart": "Installed. Restart the watch to see the app.",
     "apps.need": "Connect the watch (or turn on demo mode) to install.",
     "apps.built_demo": "Built successfully (demo mode - not installed to a watch).",
+    "tab.music": "Music",
+    "music.title": "Music library",
+    "music.intro": "Choose a music folder on the PC, tick what to send, and the tool converts it to MP3 64 kbps and syncs it to the watch (the hidden partition, under data/mass/music). The watch music app reads it from there.",
+    "music.folder": "Library folder",
+    "music.no_folder": "No folder chosen",
+    "music.pick": "Choose folder",
+    "music.scan": "Scan",
+    "music.scanning": "Scanning... {n} of {m}",
+    "music.scanned": "Found {n} tracks.",
+    "music.skipped": "{n} files could not be read.",
+    "music.empty": "No audio files found in the folder.",
+    "music.select_all": "Select all",
+    "music.select_none": "Clear selection",
+    "music.bar": "Selected {sel} of {avail} available for music",
+    "music.bar_over": "The selection is larger than the free space on the watch (a 10 MB margin is kept). Remove some tracks.",
+    "music.sync": "Sync to watch",
+    "music.cancel": "Stop",
+    "music.cancelled": "Sync stopped. What was already copied is kept.",
+    "music.phase_encode": "Converting {n} of {m}: {name}",
+    "music.phase_copy": "Copying to the watch {n} of {m}: {name}",
+    "music.phase_delete": "Deleting from the watch {n} of {m}",
+    "music.phase_index": "Writing the track list...",
+    "music.done": "Sync complete: {n} tracks on the watch. Wrote {w}, deleted {d} files. Free now: {f}.",
+    "music.failed": "Not converted ({n}):",
+    "music.no_space": "Not enough space on the watch: need {need}, available {avail}.",
+    "music.scan_first": "Scan the folder first.",
+    "music.need": "Connect the watch (or turn on demo mode) to sync.",
+    "music.need_mount": "The watch is in Charging mode and its hidden partition is not mounted yet.",
+    "music.mount": "Mount the partition",
+    "music.on_watch": "On the watch now",
+    "music.watch_summary": "{n} tracks, {size}.",
+    "music.drive_free": "Drive free: {free} of {total}.",
+    "music.watch_empty": "No music on the watch yet.",
+    "music.on_watch_mark": "on watch",
+    "music.root_folder": "(folder root)",
+    "music.recycle": "The recycle bin on the watch drive takes {size}.",
+    "music.recycle_empty": "Empty recycle bin",
+    "music.recycle_confirm": "Permanently delete the contents of the recycle bin on the watch drive ({size})?",
+    "music.recycle_done": "Recycle bin emptied. Freed {size}.",
+    "music.playlists": "Playlists: {n}",
     "soon": "Under construction. Coming soon.",
     "footer.safe": "Read-only and mode-change only. No firmware writes or erases.",
   },
@@ -453,6 +533,8 @@ function setStatus(mode) {
   if (mapsTab) mapsTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
   const appsTab = document.querySelector('.nav-item[data-tab="apps"]');
   if (appsTab) appsTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
+  const musicTab = document.querySelector('.nav-item[data-tab="music"]');
+  if (musicTab) musicTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
 }
 
 /* ---------- Maps ---------- */
@@ -1169,7 +1251,11 @@ function switchTab(name) {
   }
   if (name === "apps") {
     initApps();
-  }  if (name === "wireless") {
+  }
+  if (name === "music") {
+    initMusic();
+  }
+  if (name === "wireless") {
     bleRender();
   }
 }
@@ -1565,6 +1651,392 @@ async function launcherInstall() {
   }
 }
 
+/* ---------- Music library ---------- */
+const MUSIC_MARGIN = 10 * 1048576;
+let musicRootPath = localStorage.getItem("musicRoot") || "";
+let musicScanData = null; // last music_scan result
+let musicSel = new Set(); // selected track ids
+let musicWatchData = null; // last music_watch result
+let musicTreeRoot = null;
+let musicBusy = false;
+let musicListening = false;
+
+function fmt(key, vars) {
+  let s = t(key);
+  for (const k in vars) s = s.split("{" + k + "}").join(vars[k]);
+  return s;
+}
+
+function fmtDur(sec) {
+  const s = Math.round(sec || 0);
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+function musicSaveSel() {
+  if (!musicScanData) return;
+  const rels = musicScanData.tracks.filter((tr) => musicSel.has(tr.id)).map((tr) => tr.rel);
+  try { localStorage.setItem("musicSel:" + musicRootPath, JSON.stringify(rels)); } catch (e) { /* full */ }
+}
+
+function musicLoadSel() {
+  try {
+    const v = localStorage.getItem("musicSel:" + musicRootPath);
+    return v ? new Set(JSON.parse(v)) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function initMusic() {
+  document.getElementById("musicFolder").textContent = musicRootPath || t("music.no_folder");
+  document.getElementById("musicScan").disabled = !musicRootPath || musicBusy;
+  if (!musicListening && window.__TAURI__.event) {
+    musicListening = true;
+    window.__TAURI__.event.listen("music-scan", (e) => {
+      document.getElementById("musicMsg").textContent =
+        fmt("music.scanning", { n: e.payload.done, m: e.payload.total });
+      musicSetProgress(e.payload.done, e.payload.total);
+    });
+    window.__TAURI__.event.listen("music-progress", (e) => {
+      const p = e.payload;
+      const key = "music.phase_" + p.phase;
+      const n = p.phase === "copy" ? Math.min(p.done + 1, p.total) : p.done;
+      document.getElementById("musicMsg").textContent = fmt(key, { n, m: p.total, name: p.name });
+      musicSetProgress(p.done, p.total);
+    });
+  }
+  await musicLoadWatch();
+  if (musicRootPath && !musicScanData && !musicBusy) musicScan();
+}
+
+function musicSetProgress(done, total) {
+  const bar = document.getElementById("musicProg");
+  if (total > 0) {
+    bar.style.display = "block";
+    bar.max = total;
+    bar.value = done;
+  } else {
+    bar.style.display = "none";
+  }
+}
+
+async function musicLoadWatch() {
+  const box = document.getElementById("musicWatch");
+  const msg = document.getElementById("musicWatchMsg");
+  box.innerHTML = "";
+  msg.textContent = "";
+  try {
+    musicWatchData = await invoke("music_watch");
+  } catch (e) {
+    musicWatchData = null;
+    const s = String(e);
+    if (s.includes("not_mounted") && lastMode === "charging") {
+      msg.textContent = t("music.need_mount");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn primary";
+      b.textContent = t("music.mount");
+      b.addEventListener("click", async () => {
+        b.disabled = true;
+        msg.textContent = t("partition.exposing");
+        try {
+          await invoke("expose_partition");
+          await musicLoadWatch();
+        } catch (err) {
+          msg.textContent = String(err);
+          b.disabled = false;
+        }
+      });
+      box.appendChild(b);
+    } else {
+      msg.textContent = s.includes("not_mounted") ? t("music.need") : s;
+    }
+    musicUpdateBar();
+    return;
+  }
+  const w = musicWatchData;
+  msg.textContent =
+    (w.tracks.length
+      ? fmt("music.watch_summary", { n: w.tracks.length, size: fmtSize(w.library_bytes) }) +
+        (w.playlists.length ? "  ·  " + fmt("music.playlists", { n: w.playlists.length }) : "")
+      : t("music.watch_empty")) +
+    "  " + fmt("music.drive_free", { free: fmtSize(w.free), total: fmtSize(w.total) });
+  const groups = new Map();
+  for (const tr of w.tracks) {
+    const k = tr.folder || t("music.root_folder");
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(tr);
+  }
+  for (const [folder, list] of groups) {
+    const d = document.createElement("details");
+    d.className = "music-group";
+    const sum = document.createElement("summary");
+    const size = list.reduce((a, x) => a + x.size, 0);
+    sum.textContent = folder + "  (" + list.length + ", " + fmtSize(size) + ")";
+    d.appendChild(sum);
+    for (const tr of list) {
+      const row = document.createElement("div");
+      row.className = "music-track";
+      row.innerHTML = '<span class="mt-title"></span><span class="mt-meta"></span>';
+      row.querySelector(".mt-title").textContent = tr.title + (tr.artist ? " - " + tr.artist : "");
+      row.querySelector(".mt-meta").textContent = fmtDur(tr.duration) + "  ·  " + fmtSize(tr.size);
+      d.appendChild(row);
+    }
+    box.appendChild(d);
+  }
+  const rec = document.getElementById("musicRecycleBox");
+  if (w.recycle_bytes > 0) {
+    rec.style.display = "flex";
+    document.getElementById("musicRecycleText").textContent = fmt("music.recycle", { size: fmtSize(w.recycle_bytes) });
+  } else {
+    rec.style.display = "none";
+  }
+  musicUpdateBar();
+  if (musicTreeRoot) musicRefreshTree(musicTreeRoot);
+}
+
+async function musicPick() {
+  try {
+    const p = await invoke("music_pick_folder");
+    if (!p) return;
+    musicRootPath = p;
+    localStorage.setItem("musicRoot", p);
+    musicScanData = null;
+    document.getElementById("musicFolder").textContent = p;
+    document.getElementById("musicScan").disabled = false;
+    await musicScan();
+  } catch (e) {
+    document.getElementById("musicMsg").textContent = String(e);
+  }
+}
+
+function musicSetBusy(b) {
+  musicBusy = b;
+  document.getElementById("musicPick").disabled = b;
+  document.getElementById("musicScan").disabled = b || !musicRootPath;
+  document.getElementById("musicSync").disabled = b || !musicScanData;
+  document.getElementById("musicCancel").style.display = b ? "" : "none";
+}
+
+async function musicScan() {
+  if (!musicRootPath || musicBusy) return;
+  const msg = document.getElementById("musicMsg");
+  musicSetBusy(true);
+  msg.textContent = fmt("music.scanning", { n: 0, m: "?" });
+  try {
+    musicScanData = await invoke("music_scan", { root: musicRootPath });
+    const saved = musicLoadSel();
+    const onWatch = new Set((musicWatchData ? musicWatchData.tracks : []).map((x) => x.id));
+    musicSel = new Set();
+    for (const tr of musicScanData.tracks) {
+      if (saved ? saved.has(tr.rel) : onWatch.has(tr.id)) musicSel.add(tr.id);
+    }
+    msg.textContent = musicScanData.tracks.length
+      ? fmt("music.scanned", { n: musicScanData.tracks.length }) +
+        (musicScanData.skipped ? " " + fmt("music.skipped", { n: musicScanData.skipped }) : "")
+      : t("music.empty");
+    musicRenderTree();
+  } catch (e) {
+    musicScanData = null;
+    msg.textContent = String(e);
+    document.getElementById("musicTree").innerHTML = "";
+  } finally {
+    musicSetProgress(0, 0);
+    musicSetBusy(false);
+    musicUpdateBar();
+  }
+}
+
+/* Build a folder tree: {name, path, children: Map, tracks: []}. */
+function musicBuildTree(tracks) {
+  const root = { name: "", path: "", children: new Map(), tracks: [] };
+  for (const tr of tracks) {
+    let node = root;
+    if (tr.folder) {
+      let path = "";
+      for (const part of tr.folder.split("/")) {
+        path = path ? path + "/" + part : part;
+        if (!node.children.has(part)) node.children.set(part, { name: part, path, children: new Map(), tracks: [] });
+        node = node.children.get(part);
+      }
+    }
+    node.tracks.push(tr);
+  }
+  return root;
+}
+
+function musicAllTracks(node, out = []) {
+  out.push(...node.tracks);
+  for (const c of node.children.values()) musicAllTracks(c, out);
+  return out;
+}
+
+function musicRenderTree() {
+  const box = document.getElementById("musicTree");
+  box.innerHTML = "";
+  if (!musicScanData || !musicScanData.tracks.length) { musicTreeRoot = null; return; }
+  musicTreeRoot = musicBuildTree(musicScanData.tracks);
+  box.appendChild(musicRenderNode(musicTreeRoot, true));
+  musicRefreshTree(musicTreeRoot);
+}
+
+function musicRenderNode(node, isRoot) {
+  const d = document.createElement("details");
+  d.className = "music-folder";
+  d.open = isRoot || node.children.size + node.tracks.length <= 12;
+  const sum = document.createElement("summary");
+  sum.innerHTML = '<input type="checkbox" /><span class="mf-name"></span><span class="mf-meta"></span>';
+  sum.querySelector(".mf-name").textContent = isRoot ? t("music.root_folder") : node.name;
+  const cb = sum.querySelector("input");
+  cb.addEventListener("click", (e) => e.stopPropagation());
+  cb.addEventListener("change", () => {
+    for (const tr of musicAllTracks(node)) {
+      if (cb.checked) musicSel.add(tr.id); else musicSel.delete(tr.id);
+    }
+    musicChanged();
+  });
+  node.cb = cb;
+  node.meta = sum.querySelector(".mf-meta");
+  d.appendChild(sum);
+  const sorted = [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name));
+  for (const c of sorted) d.appendChild(musicRenderNode(c, false));
+  const tracks = [...node.tracks].sort((a, b) => (a.track - b.track) || a.title.localeCompare(b.title));
+  for (const tr of tracks) {
+    const row = document.createElement("label");
+    row.className = "music-track";
+    row.innerHTML = '<input type="checkbox" /><span class="mt-title"></span><span class="mt-mark"></span><span class="mt-meta"></span>';
+    row.querySelector(".mt-title").textContent = tr.title + (tr.artist ? " - " + tr.artist : "");
+    row.querySelector(".mt-meta").textContent = fmtDur(tr.duration) + "  ·  " + fmtSize(tr.est_size);
+    row.title = tr.rel;
+    const tcb = row.querySelector("input");
+    tcb.checked = musicSel.has(tr.id);
+    tcb.addEventListener("change", () => {
+      if (tcb.checked) musicSel.add(tr.id); else musicSel.delete(tr.id);
+      musicChanged();
+    });
+    tr.cb = tcb;
+    tr.mark = row.querySelector(".mt-mark");
+    d.appendChild(row);
+  }
+  return d;
+}
+
+/* Update checkbox states, marks and per-folder totals. Returns [selected, total]. */
+function musicRefreshTree(node) {
+  const onWatch = new Set((musicWatchData ? musicWatchData.tracks : []).map((x) => x.id));
+  const walk = (n) => {
+    let sel = 0, all = 0, selBytes = 0, allBytes = 0;
+    for (const tr of n.tracks) {
+      all++; allBytes += tr.est_size;
+      if (musicSel.has(tr.id)) { sel++; selBytes += tr.est_size; }
+      if (tr.cb) tr.cb.checked = musicSel.has(tr.id);
+      if (tr.mark) tr.mark.textContent = onWatch.has(tr.id) ? t("music.on_watch_mark") : "";
+    }
+    for (const c of n.children.values()) {
+      const r = walk(c);
+      sel += r[0]; all += r[1]; selBytes += r[2]; allBytes += r[3];
+    }
+    if (n.cb) {
+      n.cb.checked = all > 0 && sel === all;
+      n.cb.indeterminate = sel > 0 && sel < all;
+      n.meta.textContent = sel + "/" + all + "  ·  " + fmtSize(selBytes) + " / " + fmtSize(allBytes);
+    }
+    return [sel, all, selBytes, allBytes];
+  };
+  return walk(node);
+}
+
+function musicChanged() {
+  if (musicTreeRoot) musicRefreshTree(musicTreeRoot);
+  musicSaveSel();
+  musicUpdateBar();
+}
+
+function musicSelectAll(on) {
+  if (!musicScanData) return;
+  musicSel = new Set(on ? musicScanData.tracks.map((x) => x.id) : []);
+  musicChanged();
+}
+
+/* Estimated library size of the current selection: tracks already on the
+   watch count with their real size, new ones with the estimate; plus covers. */
+function musicSelectedBytes() {
+  if (!musicScanData) return 0;
+  const watchSize = new Map((musicWatchData ? musicWatchData.tracks : []).map((x) => [x.id, x.size]));
+  const covers = new Set();
+  let bytes = 0;
+  for (const tr of musicScanData.tracks) {
+    if (!musicSel.has(tr.id)) continue;
+    bytes += watchSize.has(tr.id) ? watchSize.get(tr.id) : tr.est_size;
+    if (tr.cover) covers.add(tr.cover);
+  }
+  return bytes + covers.size * musicScanData.cover_est;
+}
+
+function musicAvailable() {
+  if (!musicWatchData) return null;
+  return musicWatchData.free + musicWatchData.library_bytes;
+}
+
+function musicUpdateBar() {
+  const sel = musicSelectedBytes();
+  const avail = musicAvailable();
+  const fill = document.getElementById("musicFill");
+  const text = document.getElementById("musicBarText");
+  const over = avail !== null && sel + MUSIC_MARGIN > avail;
+  if (avail === null) {
+    fill.style.width = "0%";
+    text.textContent = fmt("music.bar", { sel: fmtSize(sel), avail: "?" });
+  } else {
+    fill.style.width = Math.min(100, (sel / Math.max(1, avail)) * 100).toFixed(1) + "%";
+    text.textContent = fmt("music.bar", { sel: fmtSize(sel), avail: fmtSize(avail) });
+  }
+  fill.classList.toggle("over", over);
+  document.getElementById("musicOver").style.display = over ? "block" : "none";
+  document.getElementById("musicSync").disabled = musicBusy || !musicScanData || avail === null || over;
+}
+
+async function musicSync() {
+  const msg = document.getElementById("musicMsg");
+  if (!musicScanData) { msg.textContent = t("music.scan_first"); return; }
+  musicSetBusy(true);
+  document.getElementById("musicFailed").textContent = "";
+  try {
+    const r = await invoke("music_sync", { ids: [...musicSel] });
+    msg.textContent = fmt("music.done", {
+      n: r.tracks, w: fmtSize(r.bytes_written), d: r.deleted, f: fmtSize(r.free),
+    });
+    if (r.failed.length) {
+      document.getElementById("musicFailed").textContent =
+        fmt("music.failed", { n: r.failed.length }) + "\n" + r.failed.join("\n");
+    }
+  } catch (e) {
+    const s = String(e);
+    const m = s.match(/no_space:(\d+):(\d+)/);
+    msg.textContent = m ? fmt("music.no_space", { need: fmtSize(Number(m[1])), avail: fmtSize(Number(m[2])) })
+      : s.includes("cancelled") ? t("music.cancelled")
+      : s.includes("scan_first") ? t("music.scan_first")
+      : s.includes("not_mounted") ? t("music.need")
+      : s;
+  } finally {
+    musicSetProgress(0, 0);
+    musicSetBusy(false);
+    await musicLoadWatch();
+  }
+}
+
+async function musicEmptyRecycle() {
+  if (!musicWatchData) return;
+  if (!window.confirm(fmt("music.recycle_confirm", { size: fmtSize(musicWatchData.recycle_bytes) }))) return;
+  try {
+    const freed = await invoke("music_empty_recycle");
+    document.getElementById("musicMsg").textContent = fmt("music.recycle_done", { size: fmtSize(freed) });
+  } catch (e) {
+    document.getElementById("musicMsg").textContent = String(e);
+  }
+  await musicLoadWatch();
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   applyStoredTheme();
   applyI18n();
@@ -1638,6 +2110,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wxSend").addEventListener("click", wxSend);
   document.getElementById("wxCityInput").addEventListener("keydown", (e) => { if (e.key === "Enter") wxSearch(); });
   document.getElementById("wxResults").addEventListener("change", (e) => wxPick(Number(e.target.value)));
+  document.getElementById("musicPick").addEventListener("click", musicPick);
+  document.getElementById("musicScan").addEventListener("click", musicScan);
+  document.getElementById("musicAll").addEventListener("click", () => musicSelectAll(true));
+  document.getElementById("musicNone").addEventListener("click", () => musicSelectAll(false));
+  document.getElementById("musicSync").addEventListener("click", musicSync);
+  document.getElementById("musicCancel").addEventListener("click", () => invoke("music_cancel").catch(() => {}));
+  document.getElementById("musicRecycle").addEventListener("click", musicEmptyRecycle);
   document.querySelectorAll(".nav-item").forEach((b) => {
     b.addEventListener("click", () => { if (!b.disabled) switchTab(b.dataset.tab); });
   });

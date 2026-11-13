@@ -50,6 +50,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         <span data-i18n="tab.apps"></span>
       </button>
+      <button class="nav-item" data-tab="music" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <span data-i18n="tab.music"></span>
+      </button>
       <button class="nav-item" data-tab="wireless" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg>
         <span data-i18n="tab.wireless"></span>
@@ -472,6 +476,57 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
             <span data-i18n="apps.restart"></span>
           </div>
+        </div>
+      </section>
+
+      <section id="tab-music" class="panel">
+        <h1 data-i18n="music.title"></h1>
+        <p class="lead" data-i18n="music.intro"></p>
+
+        <div class="card music-source">
+          <div class="music-folder-row">
+            <span class="muted" data-i18n="music.folder"></span>
+            <span id="musicFolder" class="music-path"></span>
+          </div>
+          <div class="actions">
+            <button id="musicPick" class="btn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span data-i18n="music.pick"></span>
+            </button>
+            <button id="musicScan" class="btn" type="button" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+              <span data-i18n="music.scan"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="music-space">
+          <div class="music-bar"><div id="musicFill" class="music-fill"></div></div>
+          <p id="musicBarText" class="bg-hint"></p>
+          <p id="musicOver" class="music-over" data-i18n="music.bar_over" style="display:none"></p>
+        </div>
+
+        <div class="actions">
+          <button id="musicSync" class="btn primary" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5-5 5 5M12 5v12"/></svg>
+            <span data-i18n="music.sync"></span>
+          </button>
+          <button id="musicCancel" class="btn" type="button" style="display:none" data-i18n="music.cancel"></button>
+          <button id="musicAll" class="btn" type="button" data-i18n="music.select_all"></button>
+          <button id="musicNone" class="btn" type="button" data-i18n="music.select_none"></button>
+        </div>
+        <progress id="musicProg" class="music-prog" style="display:none"></progress>
+        <p id="musicMsg" class="coming"></p>
+        <pre id="musicFailed" class="music-failed"></pre>
+        <div id="musicTree" class="music-tree"></div>
+
+        <h2 class="sub" data-i18n="music.on_watch"></h2>
+        <p id="musicWatchMsg" class="coming"></p>
+        <div id="musicWatch" class="music-watch"></div>
+        <div id="musicRecycleBox" class="info-note" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          <span id="musicRecycleText"></span>
+          <button id="musicRecycle" class="btn" type="button" data-i18n="music.recycle_empty"></button>
         </div>
       </section>
     </main>
