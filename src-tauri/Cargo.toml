@@ -10,6 +10,10 @@ authors.workspace = true
 name = "dt_g1_studio_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+# Lite edition: the UI hides the menu editor, app builder and partition browser.
+lite = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

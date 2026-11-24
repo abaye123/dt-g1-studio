@@ -187,6 +187,14 @@ const I18N = {
     "apps.restart": "הותקן. הפעל מחדש את השעון כדי לראות את האפליקציה.",
     "apps.need": "חבר את השעון (או הפעל מצב דמו) כדי להתקין.",
     "apps.built_demo": "נבנה בהצלחה (מצב דמו - לא הותקן בשעון).",
+    "tab.texts": "טקסטים",
+    "texts.title": "קובצי טקסט",
+    "texts.intro": "העתקת קובצי txt ו-md לקורא הטקסטים בשעון. קובץ בשם זהה יוחלף.",
+    "texts.add": "העתק קבצים לשעון",
+    "texts.copied": "הועתקו {n} קבצים. נתק, הפעל מחדש את השעון ופתח את הקורא.",
+    "texts.empty": "אין קבצים בשעון.",
+    "texts.delete": "מחק",
+    "texts.confirm": "למחוק מהשעון את {name}?",
     "tab.music": "מוזיקה",
     "music.title": "ספריית מוזיקה",
     "music.intro": "בחר תיקיית מוזיקה במחשב, סמן מה להעביר, והכלי ימיר ל-MP3 64kbps ויסנכרן לשעון (למחיצה המוסתרת, תחת data/mass/music). אפליקציית המוזיקה בשעון קוראת משם.",
@@ -415,6 +423,14 @@ const I18N = {
     "apps.restart": "Installed. Restart the watch to see the app.",
     "apps.need": "Connect the watch (or turn on demo mode) to install.",
     "apps.built_demo": "Built successfully (demo mode - not installed to a watch).",
+    "tab.texts": "Texts",
+    "texts.title": "Text files",
+    "texts.intro": "Copy txt and md files to the text reader on the watch. A file with the same name is replaced.",
+    "texts.add": "Copy files to the watch",
+    "texts.copied": "{n} files copied. Disconnect, restart the watch and open the reader.",
+    "texts.empty": "No files on the watch.",
+    "texts.delete": "Delete",
+    "texts.confirm": "Delete {name} from the watch?",
     "tab.music": "Music",
     "music.title": "Music library",
     "music.intro": "Choose a music folder on the PC, tick what to send, and the tool converts it to MP3 64 kbps and syncs it to the watch (the hidden partition, under data/mass/music). The watch music app reads it from there.",
@@ -538,6 +554,8 @@ function setStatus(mode) {
   const appsTab = document.querySelector('.nav-item[data-tab="apps"]');
   if (appsTab) appsTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
   const musicTab = document.querySelector('.nav-item[data-tab="music"]');
+  const textsTab = document.querySelector('.nav-item[data-tab="texts"]');
+  if (textsTab) textsTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
   if (musicTab) musicTab.disabled = !(mode === "charging" || mode === "mass" || mode === "demo");
 }
 
@@ -880,6 +898,8 @@ async function bgApply() {
       r.onerror = rej;
       r.readAsDataURL(blob);
     });
+    // Lite has no partition tab, so the drive is mounted here.
+    if (LITE) await invoke("expose_partition");
     await invoke("apply_background_jpeg", { jpegB64: b64 });
     msg.textContent = "";
     document.getElementById("bgDone").style.display = "flex";
@@ -1258,6 +1278,9 @@ function switchTab(name) {
   }
   if (name === "music") {
     initMusic();
+  }
+  if (name === "texts") {
+    textsLoad();
   }
   if (name === "wireless") {
     bleRender();
@@ -2041,7 +2064,74 @@ async function musicEmptyRecycle() {
   await musicLoadWatch();
 }
 
+let LITE = false;
+
+async function textsLoad() {
+  const box = document.getElementById("textsList");
+  const msg = document.getElementById("textsMsg");
+  box.textContent = "";
+  msg.textContent = "";
+  let names;
+  try {
+    names = await invoke("texts_list");
+  } catch (e) {
+    const s = String(e);
+    msg.textContent = !s.includes("not_mounted") ? s : t(lastMode === "charging" ? "music.need_mount" : "music.need");
+    return;
+  }
+  if (!names.length) box.textContent = t("texts.empty");
+  for (const name of names) {
+    const row = document.createElement("div");
+    row.className = "texts-row";
+    const label = document.createElement("span");
+    label.textContent = name;
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "btn";
+    del.textContent = t("texts.delete");
+    del.addEventListener("click", async () => {
+      if (!window.confirm(t("texts.confirm").replace("{name}", () => name))) return;
+      try {
+        await invoke("texts_delete", { name });
+        await textsLoad();
+      } catch (e) {
+        msg.textContent = String(e);
+      }
+    });
+    row.append(label, del);
+    box.appendChild(row);
+  }
+}
+
+async function textsAdd() {
+  const msg = document.getElementById("textsMsg");
+  const btn = document.getElementById("textsAdd");
+  btn.disabled = true;
+  try {
+    msg.textContent = t("partition.exposing");
+    await invoke("expose_partition");
+    msg.textContent = "";
+    const n = await invoke("texts_add");
+    await textsLoad();
+    if (n) msg.textContent = fmt("texts.copied", { n });
+  } catch (e) {
+    const s = String(e);
+    msg.textContent = s.includes("partition_not_found") ? t("partition.not_found") : s;
+  }
+  btn.disabled = false;
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
+  try {
+    LITE = await invoke("is_lite");
+  } catch (e) {
+    console.error("is_lite failed: " + e);
+  }
+  if (LITE) {
+    document.body.classList.add("lite");
+    document.querySelector(".brand-name").textContent = "DT G1 Studio Lite";
+    guideLiteEdits();
+  }
   applyStoredTheme();
   initGuide();
   applyI18n();
@@ -2115,6 +2205,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wxSend").addEventListener("click", wxSend);
   document.getElementById("wxCityInput").addEventListener("keydown", (e) => { if (e.key === "Enter") wxSearch(); });
   document.getElementById("wxResults").addEventListener("change", (e) => wxPick(Number(e.target.value)));
+  document.getElementById("textsAdd").addEventListener("click", textsAdd);
   document.getElementById("musicPick").addEventListener("click", musicPick);
   document.getElementById("musicScan").addEventListener("click", musicScan);
   document.getElementById("musicAll").addEventListener("click", () => musicSelectAll(true));

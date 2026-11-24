@@ -1,0 +1,16 @@
+{
+  "productName": "DT G1 Studio Lite",
+  "identifier": "co.abaye.dtg1studio.lite",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "DT G1 Studio Lite",
+        "width": 920,
+        "height": 680,
+        "minWidth": 720,
+        "minHeight": 520
+      }
+    ]
+  }
+}

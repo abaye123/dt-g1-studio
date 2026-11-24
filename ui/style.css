@@ -782,3 +782,10 @@ html[dir="rtl"] .switch input:checked + .slider::before { transform: translateX(
 .guide-box { background: var(--accent-soft); border-inline-start: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 10px 13px; }
 .guide-box.warn { background: var(--surface-2); border-color: var(--warn); }
 #tab-guide [hidden] { display: none; }
+
+/* Lite edition: no menu editing, app installation or partition browsing. */
+body.lite .nav-item[data-tab="partition"],
+body.lite .nav-item[data-tab="menu"],
+body.lite .nav-item[data-tab="apps"] { display: none; }
+
+.texts-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; }

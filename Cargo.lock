@@ -846,7 +846,7 @@ dependencies = [
 
 [[package]]
 name = "dt-g1-studio-app"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "base64 0.22.1",
  "btleplug",
@@ -4840,7 +4840,7 @@ dependencies = [
 
 [[package]]
 name = "watch-core"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "nusb",
  "serialport",

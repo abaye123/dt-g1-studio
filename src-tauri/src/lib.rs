@@ -167,6 +167,12 @@ fn ping_watch() -> Result<String, String> {
 }
 
 /// The app version, for the About area.
+/// True in the lite edition (built with `--features lite`).
+#[tauri::command]
+fn is_lite() -> bool {
+    cfg!(feature = "lite")
+}
+
 #[tauri::command]
 fn app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
@@ -1238,6 +1244,76 @@ struct MusicWatch {
 }
 
 /// Show a folder picker and return the chosen folder.
+/// The text reader's folder on the hidden partition.
+fn texts_dir(state: &State<'_, Demo>) -> Result<PathBuf, String> {
+    Ok(music_root(state)?.0.join("data").join("mass").join("texts"))
+}
+
+fn is_text_name(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    !name.contains(['/', '\\', ':']) && (lower.ends_with(".txt") || lower.ends_with(".md"))
+}
+
+/// Text files at the top level of the reader folder.
+#[tauri::command]
+fn texts_list(state: State<'_, Demo>) -> Result<Vec<String>, String> {
+    let dir = texts_dir(&state)?;
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut names = Vec::new();
+    for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())? {
+        let name = entry.map_err(|e| e.to_string())?.file_name().to_string_lossy().into_owned();
+        if is_text_name(&name) {
+            names.push(name);
+        }
+    }
+    names.sort();
+    Ok(names)
+}
+
+/// Ask for text files and copy them to the reader folder. A file with the same
+/// name is replaced. Returns how many were copied (0 when cancelled).
+#[tauri::command]
+async fn texts_add(app: tauri::AppHandle, state: State<'_, Demo>) -> Result<usize, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let dir = texts_dir(&state)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let picked = app
+            .dialog()
+            .file()
+            .add_filter("Text", &["txt", "md"])
+            .blocking_pick_files()
+            .unwrap_or_default();
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let mut copied = 0;
+        for file in picked {
+            let path = file.into_path().map_err(|e| e.to_string())?;
+            let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            if !is_text_name(&name) {
+                continue;
+            }
+            // A file already in the folder must not be copied onto itself.
+            if path.parent() == Some(dir.as_path()) {
+                continue;
+            }
+            std::fs::copy(&path, dir.join(&name)).map_err(|e| format!("{name}: {e}"))?;
+            copied += 1;
+        }
+        Ok(copied)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn texts_delete(state: State<'_, Demo>, name: String) -> Result<(), String> {
+    if !is_text_name(&name) {
+        return Err("bad_name".into());
+    }
+    std::fs::remove_file(texts_dir(&state)?.join(name)).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 async fn music_pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
@@ -1337,6 +1413,10 @@ pub fn run() {
             detect_connection,
             ping_watch,
             app_version,
+            is_lite,
+            texts_list,
+            texts_add,
+            texts_delete,
             expose_partition,
             partition_list,
             menu_load,
