@@ -6,6 +6,8 @@ const I18N = {
     "tab.connect": "חיבור",
     "tab.partition": "מחיצה מוסתרת",
     "tab.menu": "עריכת תפריט",
+    "tab.guide": "מדריך",
+    "guide.help": "עזרה",
     "nav.hint": "קריאה בלבד כברירת מחדל. כל כתיבה מגובה ומאושרת.",
     "connect.title": "חיבור השעון",
     "connect.intro": "חבר את שעון ה-DT G1 למחשב עם כבל הטעינה. הכלי יזהה את מצב החיבור וידריך אותך צעד-צעד.",
@@ -232,6 +234,8 @@ const I18N = {
     "tab.connect": "Connect",
     "tab.partition": "Hidden partition",
     "tab.menu": "Menu editor",
+    "tab.guide": "Guide",
+    "guide.help": "Help",
     "nav.hint": "Read-only by default. Any write is backed up and confirmed.",
     "connect.title": "Connect the watch",
     "connect.intro": "Connect the DT G1 watch to the PC with its charging cable. The tool detects the connection state and guides you step by step.",
@@ -2039,6 +2043,7 @@ async function musicEmptyRecycle() {
 
 window.addEventListener("DOMContentLoaded", async () => {
   applyStoredTheme();
+  initGuide();
   applyI18n();
 
   document.getElementById("themeToggle").addEventListener("click", toggleTheme);

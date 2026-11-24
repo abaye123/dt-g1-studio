@@ -58,6 +58,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg>
         <span data-i18n="tab.wireless"></span>
       </button>
+      <button class="nav-item" data-tab="guide" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h14v18H6a2 2 0 0 1-2-2zM4 19a2 2 0 0 1 2-2h14"/></svg>
+        <span data-i18n="tab.guide"></span>
+      </button>
       <div class="nav-sep"></div>
       <div class="nav-hint" data-i18n="nav.hint"></div>
     </aside>
@@ -529,9 +533,19 @@
           <button id="musicRecycle" class="btn" type="button" data-i18n="music.recycle_empty"></button>
         </div>
       </section>
+
+      <section id="tab-guide" class="panel" lang="he" dir="rtl">
+        <h1>מדריך למשתמש</h1>
+        <p class="lead">הסבר מלא לכל מה שאפשר לעשות בתוכנה. לחץ על נושא, או חפש.</p>
+        <input id="guideSearch" class="guide-search" type="search" placeholder="חיפוש במדריך" aria-label="חיפוש במדריך" />
+        <nav id="guideToc" class="guide-toc"></nav>
+        <p id="guideNone" hidden>לא נמצאו תוצאות.</p>
+        <div id="guideBody"></div>
+      </section>
     </main>
 
     <script src="vendor/leaflet/leaflet.js"></script>
+    <script src="guide.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
